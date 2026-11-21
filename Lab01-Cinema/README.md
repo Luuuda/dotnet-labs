@@ -111,6 +111,10 @@ mongodb://localhost:27017/cinema_reviews
 
 Вихідний код діаграми: [`docs/erd/booking.mmd`](docs/erd/booking.mmd) (Mermaid).
 
+Та сама схема, згенерована з розгорнутої бази `CinemaBooking` (Rider → Database → Diagrams → Show Diagram). Стрілки — реальні FOREIGN KEY; від `Screenings` немає жодного FK за межі бази:
+
+![ERD CinemaBooking з бази](docs/erd/booking-db.png)
+
 **Таблиці (9):** Customers, Promotions, Screenings (локальна копія), Bookings, BookingDetails, Tickets, BookingStatusHistory, BookingStatusTransitions, Payments. Плюс представлення `vw_BookingSummary`.
 
 | Зв'язок | Де | Де розташований FK |
@@ -193,6 +197,10 @@ SELECT Status FROM dbo.Bookings WHERE Id = 3;   -- лишився Submitted
 ![ERD CinemaCatalog](docs/erd/catalog.png)
 
 Вихідний код діаграми: [`docs/erd/catalog.mmd`](docs/erd/catalog.mmd) (Mermaid).
+
+Та сама схема, згенерована з розгорнутої бази `CinemaCatalog` (Rider → Database → Diagrams → Show Diagram):
+
+![ERD CinemaCatalog з бази](docs/erd/catalog-db.png)
 
 **6 сутностей:** Movies, MovieDetails, Genres, MovieGenres, Halls, Screenings. Плюс представлення `vw_Schedule`.
 
@@ -303,6 +311,7 @@ sql/booking/              Проєкт №1: 01_schema, 02_procedures, 03_seed, 
 sql/catalog/              Проєкт №2: 01_schema, 02_seed, 03_tests
 mongo/                    Проєкт №3: 01_schema (колекції + валідація + індекси), 02_seed, 03_queries, migrations/
 mongo/examples/           приклади документів у JSON
-docs/erd/                 ERD (PNG + вихідні Mermaid .mmd)
+docs/erd/                 ERD: booking.png / catalog.png (+ вихідні Mermaid .mmd),
+                          booking-db.png / catalog-db.png — діаграми з розгорнутих баз
 docs/control-questions.md відповіді на контрольні питання
 ```
