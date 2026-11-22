@@ -1,0 +1,54 @@
+@api = http://localhost:5280
+
+### Список фільмів: сторінка 2, по 2, новіші спочатку
+GET {{api}}/api/movies?page=2&pageSize=2&sortBy=year&sortDir=desc
+
+### Фільтр: жанр + рік + віковий рейтинг
+GET {{api}}/api/movies?genre=sci-fi&yearFrom=2010&ageRating=12%2B
+
+### Картка фільму (Eager Loading — 1 SQL-запит)
+GET {{api}}/api/movies/3
+
+### Неіснуючий фільм → 404 ProblemDetails
+GET {{api}}/api/movies/987654
+
+### Створити фільм → 201 + Location (повторно → 409)
+POST {{api}}/api/movies
+Content-Type: application/json
+
+{
+  "title": "Тіні забутих предків",
+  "releaseYear": 1965,
+  "durationMinutes": 97,
+  "ageRating": "12+",
+  "description": "Карпатська драма за повістю Коцюбинського",
+  "director": "Сергій Параджанов",
+  "genres": ["drama", "historical"]
+}
+
+### Некоректні дані → 400 з помилками по полях
+POST {{api}}/api/movies
+Content-Type: application/json
+
+{ "title": "Тест", "releaseYear": 1700, "durationMinutes": 0, "ageRating": "21+", "genres": ["Sci Fi"] }
+
+### Жанр з фільмами (Explicit Loading — 2 SQL-запити)
+GET {{api}}/api/genres/1/movies
+
+### Нещодавно додані до жанру (LINQ по проміжній сутності M:N)
+GET {{api}}/api/genres/sci-fi/recent?since=2026-01-01
+
+### Статистика жанрів
+GET {{api}}/api/genres/stats
+
+### Розклад: IMAX, найдорожчі спочатку (друга специфікація)
+GET {{api}}/api/screenings?format=IMAX&sortBy=price&sortDir=desc
+
+### Запланувати сеанс
+POST {{api}}/api/screenings
+Content-Type: application/json
+
+{ "movieId": 3, "hallId": 2, "startsAt": "2027-01-15T18:00:00", "format": "IMAX", "language": "українська", "basePrice": 280 }
+
+### Скасувати сеанс (повторно → 409)
+POST {{api}}/api/screenings/1/cancel
