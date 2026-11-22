@@ -7,3 +7,8 @@
 | Гілка | Лабораторна | Тема |
 |---|---|---|
 | `lab-01` | Lab01 | Проєктування баз даних для мікросервісної архітектури (предметна область «Кінотеатр») |
+| `lab-02` | Lab02 | Тришарова архітектура на ADO.NET та Dapper — мікросервіс бронювання |
+
+## Lab02 (ця гілка)
+
+Усе в папці [`Lab02-BookingService/`](Lab02-BookingService/): DAL (ADO.NET + Dapper, Unit of Work) → BLL → Web API, запуск через .NET Aspire. Інструкція — [`Lab02-BookingService/README.md`](Lab02-BookingService/README.md).
