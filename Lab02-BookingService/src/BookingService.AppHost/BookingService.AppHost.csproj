@@ -1,0 +1,15 @@
+<Project Sdk="Aspire.AppHost.Sdk/13.6.5">
+  <!-- .NET Aspire AppHost: описує ресурси (SQL Server + API) і запускає їх однією командою -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <!-- Aspire 13 потребує .NET 10 SDK; сам мікросервіс лишається на net9.0 -->
+    <TargetFramework>net10.0</TargetFramework>
+    <UserSecretsId>cinema-booking-apphost-lab02</UserSecretsId>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Aspire.Hosting.SqlServer" Version="13.6.5" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\BookingService.Api\BookingService.Api.csproj" />
+  </ItemGroup>
+</Project>
