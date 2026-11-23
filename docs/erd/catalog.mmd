@@ -1,0 +1,63 @@
+erDiagram
+    Movies ||--|| MovieDetails : "1:1 (cascade)"
+    Movies ||--o{ MovieGenres : "M:N (cascade)"
+    Genres ||--o{ MovieGenres : "M:N"
+    Movies ||--o{ Screenings : "1:N"
+    Halls ||--o{ Screenings : "1:N"
+
+    Movies {
+        int Id PK "IDENTITY"
+        nvarchar Title "UK(Title,ReleaseYear), IX filtered"
+        nvarchar OriginalTitle
+        smallint ReleaseYear "CHECK 1895..2100"
+        smallint DurationMinutes "CHECK 1..600"
+        varchar AgeRating "CHECK 0+..18+"
+        decimal AverageRating "copy from Reviews"
+        int RatingsCount "copy from Reviews"
+        datetime2 CreatedAt
+        nvarchar CreatedBy
+        datetime2 UpdatedAt
+        nvarchar UpdatedBy
+        bit IsDeleted
+        rowversion RowVersion
+    }
+    MovieDetails {
+        int MovieId PK,FK
+        nvarchar Description
+        nvarchar Director
+        nvarchar Country
+        nvarchar Language
+        nvarchar PosterUrl
+        nvarchar TrailerUrl
+    }
+    Genres {
+        int Id PK
+        nvarchar Name UK
+        varchar Slug UK
+    }
+    MovieGenres {
+        int MovieId PK,FK
+        int GenreId PK,FK
+        datetime2 AddedAt "own field"
+        bit IsPrimary "own field"
+    }
+    Halls {
+        int Id PK
+        nvarchar Name UK
+        nvarchar HallType "Standard/IMAX/VIP/4DX"
+        int RowsCount
+        int SeatsPerRow
+        bit IsActive
+    }
+    Screenings {
+        bigint Id PK "IDENTITY"
+        int MovieId FK
+        int HallId FK "UK(HallId,StartsAt)"
+        datetime2 StartsAt
+        datetime2 EndsAt "CHECK > StartsAt"
+        varchar Format "2D/3D/IMAX/4DX"
+        nvarchar Language
+        decimal BasePrice "CHECK > 0"
+        bit IsCancelled
+        rowversion RowVersion
+    }

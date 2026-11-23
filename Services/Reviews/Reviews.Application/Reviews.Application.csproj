@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Application: сценарії використання (команди й запити MediatR), валідатори, behaviors, DTO, профілі AutoMapper.
+       Залежить ЛИШЕ від Domain; інтерфейси для читання (IReviewQueries) оголошено тут, реалізація — в Infrastructure. -->
+  <ItemGroup>
+    <PackageReference Include="MediatR" Version="13.*" />
+    <PackageReference Include="FluentValidation" Version="12.*" />
+    <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="12.*" />
+    <PackageReference Include="AutoMapper" Version="15.1.4" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="9.0.*" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Reviews.Domain\Reviews.Domain.csproj" />
+  </ItemGroup>
+</Project>
