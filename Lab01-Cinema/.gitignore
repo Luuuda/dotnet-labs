@@ -1,0 +1,7 @@
+deploy.log
+*.log
+.idea/
+.vs/
+.vscode/
+bin/
+obj/

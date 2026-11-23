@@ -1,0 +1,98 @@
+erDiagram
+    Customers ||--o{ Bookings : "1:N робить"
+    Promotions |o--o{ Bookings : "1:N застосовано"
+    Bookings ||--|| BookingDetails : "1:1"
+    Bookings ||--o{ Tickets : "1:N (cascade)"
+    Screenings ||--o{ Tickets : "1:N"
+    Bookings ||--o{ BookingStatusHistory : "1:N (cascade)"
+    Bookings ||--o{ Payments : "1:N (no cascade)"
+
+    Customers {
+        uniqueidentifier Id PK "NEWSEQUENTIALID()"
+        nvarchar Email UK "UX filtered IsDeleted=0"
+        nvarchar FullName
+        varchar Phone "CHECK +[0-9]%"
+        datetime2 CreatedAt
+        nvarchar CreatedBy
+        datetime2 UpdatedAt
+        nvarchar UpdatedBy
+        bit IsDeleted
+        rowversion RowVersion
+    }
+    Promotions {
+        int Id PK
+        nvarchar Code UK
+        nvarchar Title
+        decimal DiscountPercent "CHECK 0..90"
+        datetime2 ValidFrom
+        datetime2 ValidTo "CHECK > ValidFrom"
+        bit IsActive
+    }
+    Screenings {
+        bigint Id PK "= CinemaCatalog.Screenings.Id, no FK"
+        int MovieId "logical ref -> Catalog"
+        nvarchar MovieTitle "copy (events)"
+        int HallId "logical ref -> Catalog"
+        nvarchar HallName "copy (events)"
+        int RowsCount
+        int SeatsPerRow
+        datetime2 StartsAt
+        decimal BasePrice "CHECK > 0"
+        bit IsActive
+        datetime2 SyncedAt
+    }
+    Bookings {
+        bigint Id PK "IDENTITY"
+        uniqueidentifier CustomerId FK
+        int PromotionId FK "NULL"
+        nvarchar Status "CHECK 6 statuses"
+        datetime2 CreatedAt
+        nvarchar CreatedBy
+        datetime2 UpdatedAt
+        nvarchar UpdatedBy
+        bit IsDeleted
+        rowversion RowVersion
+    }
+    BookingDetails {
+        bigint BookingId PK,FK
+        nvarchar ContactEmail
+        varchar ContactPhone
+        nvarchar Channel "Web/Mobile/BoxOffice"
+        nvarchar Comment
+    }
+    Tickets {
+        bigint Id PK
+        bigint BookingId FK
+        bigint ScreeningId FK
+        int SeatRow
+        int SeatNumber "UX (Screening,Row,Seat) WHERE active"
+        nvarchar MovieTitle "snapshot"
+        nvarchar HallName "snapshot"
+        datetime2 StartsAt "snapshot"
+        decimal UnitPrice "snapshot, CHECK > 0"
+        decimal Discount
+        bit IsCancelled
+    }
+    BookingStatusHistory {
+        bigint Id PK
+        bigint BookingId FK
+        nvarchar FromStatus
+        nvarchar ToStatus
+        datetime2 ChangedAt
+        nvarchar ChangedBy
+        nvarchar Reason
+    }
+    Payments {
+        bigint Id PK
+        bigint BookingId FK
+        decimal Amount "CHECK > 0"
+        char Currency
+        nvarchar Provider
+        nvarchar ExternalTransactionId UK "filtered NOT NULL"
+        nvarchar Status
+        datetime2 PaidAt
+    }
+    BookingStatusTransitions {
+        nvarchar FromStatus PK
+        nvarchar ToStatus PK
+    }
