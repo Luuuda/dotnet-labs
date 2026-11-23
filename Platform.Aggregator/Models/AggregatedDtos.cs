@@ -46,3 +46,12 @@ public sealed record MovieCardDto(
     IReadOnlyList<string> Warnings);
 
 public sealed record UpcomingScreening(long Id, DateTime StartsAt, string HallName, string Format, string Language, decimal Price);
+
+/// <summary>
+/// Лаб. 06: афіша — кілька фільмів з рейтингами одним запитом. Через gRPC це два пакетні виклики
+/// (GetMoviesByIds + GetRatingsForMovies), через REST — по одному запиту на кожен фільм до кожного сервісу.
+/// </summary>
+public sealed record PosterBoardDto(IReadOnlyList<MovieTile> Movies, IReadOnlyList<string> Warnings);
+
+public sealed record MovieTile(int Id, string Title, short ReleaseYear, short DurationMinutes, string AgeRating,
+    IReadOnlyList<string> Genres, double? AverageRating, int ReviewsCount);

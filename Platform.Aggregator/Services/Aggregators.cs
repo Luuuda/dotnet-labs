@@ -18,18 +18,24 @@ public sealed class RequiredServiceUnavailableException(string service, Exceptio
 }
 
 /// <summary>
+/// Лаб. 06: джерела передаються через <see cref="ServiceSources"/> — за замовчуванням gRPC (паралельні виклики
+/// мультиплексуються в одному з'єднанні HTTP/2), або HTTP з Лаб. 05 для порівняння затримок.
 /// Картка бронювання: booking-api (обов'язково) → паралельно: актуальні сеанси й фільми з catalog-api
 /// та рейтинг і відгуки з reviews-api (Task.WhenAll). Недоступний catalog-api чи reviews-api → часткова відповідь.
 /// </summary>
-public sealed class BookingCardAggregator(
-    BookingClient bookings, CatalogClient catalog, ReviewsClient reviews, ILogger<BookingCardAggregator> logger)
+public sealed class BookingCardAggregator(ServiceSources sources, ILogger<BookingCardAggregator> logger)
 {
+    private readonly IBookingSource bookings = sources.Bookings;
+    private readonly ICatalogSource catalog = sources.Catalog;
+    private readonly IReviewsSource reviews = sources.Reviews;
+
     private const int TopReviews = 3;
 
     public async Task<BookingCardDto?> GetAsync(long bookingId, CancellationToken ct)
     {
         using var activity = AggregatorTelemetry.Source.StartActivity("AggregateBookingCard");
         activity?.SetTag("booking.id", bookingId);
+        activity?.SetTag("aggregation.transport", sources.Transport);
         var partial = new PartialResults(logger, ct);
 
         // 1. Бронювання — основа відповіді
@@ -129,12 +135,16 @@ public sealed class BookingCardAggregator(
 }
 
 /// <summary>Сторінка фільму: чотири незалежні виклики двох сервісів одночасно (Task.WhenAll).</summary>
-public sealed class MovieCardAggregator(CatalogClient catalog, ReviewsClient reviews, ILogger<MovieCardAggregator> logger)
+public sealed class MovieCardAggregator(ServiceSources sources, ILogger<MovieCardAggregator> logger)
 {
+    private readonly ICatalogSource catalog = sources.Catalog;
+    private readonly IReviewsSource reviews = sources.Reviews;
+
     public async Task<MovieCardDto?> GetAsync(int movieId, CancellationToken ct)
     {
         using var activity = AggregatorTelemetry.Source.StartActivity("AggregateMovieCard");
         activity?.SetTag("movie.id", movieId);
+        activity?.SetTag("aggregation.transport", sources.Transport);
         var partial = new PartialResults(logger, ct);
 
         var movieTask = partial.SafeAsync(catalog.ServiceName, $"фільм {movieId}", () => catalog.GetMovieAsync(movieId, ct));
@@ -155,5 +165,38 @@ public sealed class MovieCardAggregator(CatalogClient catalog, ReviewsClient rev
 
         return new MovieCardDto(movieId, BookingCardAggregator.ToMovieInfo(movie), screenings,
             BookingCardAggregator.ToOpinion(await ratingTask, await topTask, !reviewsFailed), partial.Warnings);
+    }
+}
+
+/// <summary>
+/// Лаб. 06: афіша з кількох фільмів. Каталог і Відгуки опитуються паралельно (Task.WhenAll); через gRPC кожен —
+/// одним пакетним викликом (GetMoviesByIds, GetRatingsForMovies), через REST — N запитів на кожен сервіс.
+/// </summary>
+public sealed class PosterBoardAggregator(ServiceSources sources, ILogger<PosterBoardAggregator> logger)
+{
+    public const int MaxMovies = 20;
+
+    public async Task<PosterBoardDto> GetAsync(IReadOnlyCollection<int> movieIds, CancellationToken ct)
+    {
+        using var activity = AggregatorTelemetry.Source.StartActivity("AggregatePosterBoard");
+        activity?.SetTag("movies.count", movieIds.Count);
+        activity?.SetTag("aggregation.transport", sources.Transport);
+        var partial = new PartialResults(logger, ct);
+
+        var moviesTask = partial.SafeAsync(sources.Catalog.ServiceName, $"фільми {string.Join(",", movieIds)}",
+            async () => (IReadOnlyList<CatalogMovieDto>?)await sources.Catalog.GetMoviesAsync(movieIds, ct));
+        var ratingsTask = partial.SafeAsync(sources.Reviews.ServiceName, $"рейтинги фільмів {string.Join(",", movieIds)}",
+            async () => (IReadOnlyList<MovieRatingDto>?)await sources.Reviews.GetRatingsAsync(movieIds, ct));
+        await Task.WhenAll(moviesTask, ratingsTask);
+
+        var ratings = (await ratingsTask ?? []).ToDictionary(r => r.MovieId);
+        var tiles = (await moviesTask ?? [])
+            .OrderBy(m => m.Title)
+            .Select(m => new MovieTile(m.Id, m.Title, m.ReleaseYear, m.DurationMinutes, m.AgeRating,
+                (m.Genres ?? []).OrderByDescending(g => g.IsPrimary).Select(g => g.Name).ToList(),
+                ratings.TryGetValue(m.Id, out var r) ? r.Average : null,
+                ratings.TryGetValue(m.Id, out var c) ? c.Count : 0))
+            .ToList();
+        return new PosterBoardDto(tiles, partial.Warnings);
     }
 }
