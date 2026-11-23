@@ -1,3 +1,4 @@
+using Reviews.Application.Caching;
 using AutoMapper;
 using FluentValidation;
 using MediatR;
@@ -39,7 +40,8 @@ public sealed class UpdateReviewCommandValidator : AbstractValidator<UpdateRevie
     }
 }
 
-public sealed class UpdateReviewCommandHandler(IReviewRepository reviews, IMapper mapper, ILogger<UpdateReviewCommandHandler> logger)
+public sealed class UpdateReviewCommandHandler(IReviewRepository reviews, IMapper mapper, ILogger<UpdateReviewCommandHandler> logger,
+    IReviewsCacheInvalidator cache)
     : IRequestHandler<UpdateReviewCommand, ReviewDetailsDto>
 {
     public async Task<ReviewDetailsDto> Handle(UpdateReviewCommand cmd, CancellationToken ct)
@@ -55,6 +57,7 @@ public sealed class UpdateReviewCommandHandler(IReviewRepository reviews, IMappe
             cmd.Aspects is { Count: > 0 } aspects ? new ReviewAspects(aspects) : null);
 
         await reviews.UpdateAsync(review, ct);          // ReplaceOne з фільтром { _id, version } — захист від гонки
+        await cache.ReviewChangedAsync(review.Id.ToString(), review.MovieId, "ReviewUpdated", ct);   // Лаб. 06
         logger.LogInformation("Відгук {ReviewId} оновлено: оцінка {Rating}, версія {Version}", review.Id, review.Rating.Value, review.Version);
         return mapper.Map<ReviewDetailsDto>(review);
     }

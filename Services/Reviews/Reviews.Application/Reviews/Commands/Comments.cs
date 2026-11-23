@@ -1,3 +1,4 @@
+using Reviews.Application.Caching;
 using AutoMapper;
 using FluentValidation;
 using MediatR;
@@ -27,7 +28,7 @@ public sealed class AddCommentCommandValidator : AbstractValidator<AddCommentCom
     }
 }
 
-public sealed class AddCommentCommandHandler(IReviewRepository reviews, IMapper mapper)
+public sealed class AddCommentCommandHandler(IReviewRepository reviews, IMapper mapper, IReviewsCacheInvalidator cache)
     : IRequestHandler<AddCommentCommand, CommentDto>
 {
     public async Task<CommentDto> Handle(AddCommentCommand cmd, CancellationToken ct)
@@ -37,6 +38,7 @@ public sealed class AddCommentCommandHandler(IReviewRepository reviews, IMapper 
 
         var comment = review.AddComment(new Author(cmd.UserId, cmd.DisplayName), cmd.Text);   // ліміт 50 — у домені
         await reviews.UpdateAsync(review, ct);
+        await cache.ReviewChangedAsync(review.Id.ToString(), review.MovieId, "CommentAdded", ct);   // Лаб. 06: синхронно із записом
         return mapper.Map<CommentDto>(comment);
     }
 }
@@ -53,7 +55,7 @@ public sealed class RemoveCommentCommandValidator : AbstractValidator<RemoveComm
     }
 }
 
-public sealed class RemoveCommentCommandHandler(IReviewRepository reviews) : IRequestHandler<RemoveCommentCommand>
+public sealed class RemoveCommentCommandHandler(IReviewRepository reviews, IReviewsCacheInvalidator cache) : IRequestHandler<RemoveCommentCommand>
 {
     public async Task Handle(RemoveCommentCommand cmd, CancellationToken ct)
     {
@@ -65,5 +67,6 @@ public sealed class RemoveCommentCommandHandler(IReviewRepository reviews) : IRe
 
         review.RemoveComment(commentId);
         await reviews.UpdateAsync(review, ct);
+        await cache.ReviewChangedAsync(review.Id.ToString(), review.MovieId, "CommentRemoved", ct);
     }
 }

@@ -1,3 +1,4 @@
+using Reviews.Application.Caching;
 using FluentValidation;
 using MediatR;
 using Reviews.Application.Common.Messaging;
@@ -21,8 +22,12 @@ public sealed class RenameMovieCommandValidator : AbstractValidator<RenameMovieC
     }
 }
 
-public sealed class RenameMovieCommandHandler(IReviewRepository reviews) : IRequestHandler<RenameMovieCommand, long>
+public sealed class RenameMovieCommandHandler(IReviewRepository reviews, IReviewsCacheInvalidator cache) : IRequestHandler<RenameMovieCommand, long>
 {
-    public Task<long> Handle(RenameMovieCommand cmd, CancellationToken ct)
-        => reviews.RenameMovieAsync(cmd.MovieId, cmd.MovieTitle.Trim(), ct);
+    public async Task<long> Handle(RenameMovieCommand cmd, CancellationToken ct)
+    {
+        var updated = await reviews.RenameMovieAsync(cmd.MovieId, cmd.MovieTitle.Trim(), ct);
+        await cache.MovieChangedAsync(cmd.MovieId, "MovieRenamed", ct);       // movieTitle є в рейтингу й списках
+        return updated;
+    }
 }

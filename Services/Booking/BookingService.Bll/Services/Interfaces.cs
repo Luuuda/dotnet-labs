@@ -15,6 +15,8 @@ public interface IScreeningService
 {
     Task<IReadOnlyList<ScreeningDto>> ListAsync(DateTime? from, bool onlyActive, CancellationToken ct);
     Task<ScreeningDto> GetAsync(long id, CancellationToken ct);
+    /// <summary>Кілька копій сеансів за Id (gRPC GetScreeningsByIds); відсутні пропускаються.</summary>
+    Task<IReadOnlyList<ScreeningDto>> GetByIdsAsync(IReadOnlyCollection<long> ids, CancellationToken ct);
     Task<SeatMapDto> GetSeatMapAsync(long id, CancellationToken ct);
     Task<ScreeningDto> CreateAsync(CreateScreeningDto input, CancellationToken ct);
     Task<ScreeningDto> UpdateAsync(long id, UpsertScreeningDto input, CancellationToken ct);

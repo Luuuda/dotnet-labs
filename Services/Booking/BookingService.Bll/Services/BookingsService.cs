@@ -1,5 +1,6 @@
 using System.Data;
 using AutoMapper;
+using BookingService.Bll.Caching;
 using BookingService.Bll.Dtos;
 using BookingService.Bll.Validation;
 using BookingService.Dal.Abstractions;
@@ -19,13 +20,19 @@ public sealed class BookingsService(
     IMapper mapper,
     SeatSelectionValidator seatValidator,
     TimeProvider clock,
+    ITwoLevelCache cache,
     ILogger<BookingsService> logger) : IBookingService
 {
     private const string Actor = "booking-api";
 
+    /// <summary>
+    /// Лаб. 06: картка бронювання через дворівневий кеш (booking:booking:{id}). Вона містить контакти клієнта,
+    /// тому TTL дуже короткий (L1 10 с, L2 30 с), а кожна зміна статусу видаляє ключ синхронно з транзакцією.
+    /// </summary>
     public async Task<BookingDto> GetAsync(long id, CancellationToken ct) =>
-        mapper.Map<BookingDto>(await uow.Bookings.GetWithTicketsAsync(id, ct)
-                               ?? throw new NotFoundException($"Бронювання {id} не знайдено"));
+        (await cache.GetOrCreateAsync(CacheKeys.Booking(id), CachePolicy.PersonalShort, async c =>
+            mapper.Map<BookingDto>(await uow.Bookings.GetWithTicketsAsync(id, c)
+                                   ?? throw new NotFoundException($"Бронювання {id} не знайдено")), ct))!;
 
     public async Task<PagedResult<BookingSummaryDto>> ListByCustomerAsync(
         Guid customerId, string? status, int page, int pageSize, CancellationToken ct)
@@ -162,6 +169,7 @@ public sealed class BookingsService(
             throw;
         }
 
+        await cache.InvalidateAsync("BookingConfirmed", ct, CacheKeys.Booking(id));
         logger.LogInformation("Бронювання {BookingId}: місця підтверджено, статус {Status}", id, BookingStatus.SeatsConfirmed);
         return await GetAsync(id, ct);
     }
@@ -220,6 +228,7 @@ public sealed class BookingsService(
             throw;
         }
 
+        await cache.InvalidateAsync("BookingPaid", ct, CacheKeys.Booking(id));
         logger.LogInformation("Бронювання {BookingId} оплачено: {Amount} UAH через {Provider}, оплата {PaymentId}, статус {Status}",
             id, input.Amount, input.Provider, paymentId, BookingStatus.Paid);
         var payment = await uow.Payments.GetByIdAsync(paymentId, ct)
@@ -247,6 +256,7 @@ public sealed class BookingsService(
             throw new BusinessConflictException($"Видалити можна лише скасоване бронювання (зараз: {booking.Status})");
 
         await uow.Bookings.DeleteAsync(id, ct);   // soft delete
+        await cache.InvalidateAsync("BookingDeleted", ct, CacheKeys.Booking(id));
         logger.LogInformation("Бронювання {BookingId} видалено (soft delete)", id);
     }
 
@@ -261,6 +271,7 @@ public sealed class BookingsService(
         activity?.SetTag("booking.status", status);
         var expected = Guards.OptionalRowVersion(action?.RowVersion);
         await uow.Bookings.ChangeStatusAsync(id, status, Actor, action?.Reason ?? defaultReason, expected, ct);
+        await cache.InvalidateAsync("BookingStatusChanged:" + status, ct, CacheKeys.Booking(id));
         logger.LogInformation("Бронювання {BookingId} → {Status}", id, status);
         return await GetAsync(id, ct);
     }

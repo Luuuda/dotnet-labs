@@ -1,4 +1,5 @@
 using AutoMapper;
+using CatalogService.Bll.Caching;
 using CatalogService.Bll.Dtos;
 using CatalogService.Bll.Specifications;
 using CatalogService.Dal.Abstractions;
@@ -12,22 +13,41 @@ namespace CatalogService.Bll.Services;
 /// Бізнес-логіка фільмів. Сервіс НЕ працює з EF напряму — лише через репозиторії та Unit of Work.
 /// Правила самої сутності (рік, тривалість, дубль жанру) перевіряє Movie; сервіс перевіряє правила,
 /// для яких потрібні інші дані з БД (унікальність назви+року, наявність жанру, майбутні сеанси).
+/// Лаб. 06: читання — cache-aside через дворівневий кеш (L1 пам'ять → L2 Redis → БД); кожен запис синхронно
+/// інвалідує картку фільму й версію списків. REST-контролер і gRPC-сервіс викликають ті самі методи, тож кеш спільний.
 /// </summary>
-public sealed class MovieService(IUnitOfWork uow, IMapper mapper, TimeProvider clock, ILogger<MovieService> logger)
+public sealed class MovieService(IUnitOfWork uow, IMapper mapper, TimeProvider clock, ITwoLevelCache cache, ILogger<MovieService> logger)
     : IMovieService
 {
     public async Task<PagedResult<MovieListItemDto>> GetListAsync(MovieQuery query, CancellationToken ct)
     {
         var (page, pageSize) = Paging.Normalize(query.Page, query.PageSize);
-        var spec = new MoviesFilterSpec(query, page, pageSize);
-
-        var total = await uow.Movies.CountAsync(spec, ct);      // SELECT COUNT(*) ... WHERE ...
-        var items = await uow.Movies.ListAsync(spec, ct);        // ... ORDER BY ... OFFSET ... FETCH NEXT ...
-        return new PagedResult<MovieListItemDto>(mapper.Map<List<MovieListItemDto>>(items), total, page, pageSize);
+        var version = await cache.GetVersionAsync(CacheKeys.MoviesListVersion, ct);
+        var key = CacheKeys.MoviesList(version, CacheKeyHash.Of(query));
+        return (await cache.GetOrCreateAsync(key, CachePolicy.List, async c =>
+        {
+            var spec = new MoviesFilterSpec(query, page, pageSize);
+            var total = await uow.Movies.CountAsync(spec, c);    // SELECT COUNT(*) ... WHERE ...
+            var items = await uow.Movies.ListAsync(spec, c);     // ... ORDER BY ... OFFSET ... FETCH NEXT ...
+            return new PagedResult<MovieListItemDto>(mapper.Map<List<MovieListItemDto>>(items), total, page, pageSize);
+        }, ct))!;
     }
 
+    /// <summary>Картка фільму: catalog:movie:{id}. Неіснуючий фільм не кешується (EntityNotFoundException → 404 / gRPC NotFound).</summary>
     public async Task<MovieDto> GetByIdAsync(int id, CancellationToken ct) =>
-        mapper.Map<MovieDto>(await LoadAsync(id, ct));
+        (await cache.GetOrCreateAsync(CacheKeys.Movie(id), CachePolicy.Card,
+            async c => mapper.Map<MovieDto>(await LoadAsync(id, c)), ct))!;
+
+    public async Task<IReadOnlyList<MovieDto>> GetByIdsAsync(IReadOnlyCollection<int> ids, CancellationToken ct)
+    {
+        var result = new List<MovieDto>(ids.Count);
+        foreach (var id in ids.Distinct())
+        {
+            try { result.Add(await GetByIdAsync(id, ct)); }        // кожна картка — зі свого ключа кешу
+            catch (EntityNotFoundException) { /* відсутні фільми просто не повертаються */ }
+        }
+        return result;
+    }
 
     public async Task<MovieDto> CreateAsync(CreateMovieDto input, CancellationToken ct)
     {
@@ -46,6 +66,7 @@ public sealed class MovieService(IUnitOfWork uow, IMapper mapper, TimeProvider c
         await uow.SaveChangesAsync(ct);                          // один SaveChanges — одна транзакція
 
         activity?.SetTag("movie.id", movie.Id);
+        await cache.BumpVersionAsync(CacheKeys.MoviesListVersion, "MovieCreated", ct);   // новий фільм з'являється в списках
         logger.LogInformation("Створено фільм {MovieId} «{Title}» ({ReleaseYear}), жанрів: {GenresCount}",
             movie.Id, movie.Title, movie.ReleaseYear, movie.MovieGenres.Count);
         return await GetByIdAsync(movie.Id, ct);
@@ -68,6 +89,8 @@ public sealed class MovieService(IUnitOfWork uow, IMapper mapper, TimeProvider c
             movie.SetDetails(input.Description.Trim(), input.Director, input.Country, input.Language);
 
         await uow.SaveChangesAsync(ct);                          // застаріла версія → ConflictException (409)
+        await InvalidateMovieAsync(id, "MovieUpdated", ct);
+        await cache.BumpVersionAsync(CacheKeys.ScreeningsListVersion, "MovieUpdated", ct);   // назва фільму є в розкладі
         logger.LogInformation("Оновлено фільм {MovieId}", id);
         return await GetByIdAsync(id, ct);
     }
@@ -80,6 +103,7 @@ public sealed class MovieService(IUnitOfWork uow, IMapper mapper, TimeProvider c
 
         movie.Delete();                                          // soft delete
         await uow.SaveChangesAsync(ct);
+        await InvalidateMovieAsync(id, "MovieDeleted", ct);
         logger.LogInformation("Фільм {MovieId} видалено (soft delete)", id);
     }
 
@@ -90,6 +114,7 @@ public sealed class MovieService(IUnitOfWork uow, IMapper mapper, TimeProvider c
                     ?? throw new EntityNotFoundException($"Жанр «{input.Slug}» не знайдено");
         movie.AddGenre(genre, input.IsPrimary, clock.GetUtcNow().UtcDateTime);   // дубль → DomainException → 409
         await uow.SaveChangesAsync(ct);
+        await InvalidateMovieAsync(id, "MovieGenreAdded", ct);
         return await GetByIdAsync(id, ct);
     }
 
@@ -98,6 +123,14 @@ public sealed class MovieService(IUnitOfWork uow, IMapper mapper, TimeProvider c
         var movie = await LoadAsync(id, ct);
         movie.RemoveGenre(genreId);
         await uow.SaveChangesAsync(ct);
+        await InvalidateMovieAsync(id, "MovieGenreRemoved", ct);
+    }
+
+    /// <summary>Інвалідація одразу після SaveChanges: картка фільму + усі сторінки списків фільмів.</summary>
+    private async Task InvalidateMovieAsync(int id, string reason, CancellationToken ct)
+    {
+        await cache.InvalidateAsync(reason, ct, CacheKeys.Movie(id));
+        await cache.BumpVersionAsync(CacheKeys.MoviesListVersion, reason, ct);
     }
 
     private async Task<Movie> LoadAsync(int id, CancellationToken ct) =>

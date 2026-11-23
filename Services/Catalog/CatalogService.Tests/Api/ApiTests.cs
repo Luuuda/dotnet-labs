@@ -15,6 +15,7 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
         if (string.IsNullOrWhiteSpace(TestDatabase.ConnectionString)) return;
         Environment.SetEnvironmentVariable("ConnectionStrings__CatalogDb", TestDatabase.ConnectionString);
         Environment.SetEnvironmentVariable("Database__SeedOnStartup", "true");
+        Environment.SetEnvironmentVariable("Cache__WarmUp", "false");   // Лаб. 06: тести самі керують станом кешу
     }
 }
 

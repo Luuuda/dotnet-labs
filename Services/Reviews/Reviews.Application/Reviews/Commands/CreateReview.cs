@@ -1,3 +1,4 @@
+using Reviews.Application.Caching;
 using System.Diagnostics;
 using AutoMapper;
 using FluentValidation;
@@ -49,7 +50,7 @@ public sealed class CreateReviewCommandValidator : AbstractValidator<CreateRevie
 }
 
 public sealed class CreateReviewCommandHandler(IReviewRepository reviews, IMapper mapper,
-    ILogger<CreateReviewCommandHandler> logger) : IRequestHandler<CreateReviewCommand, ReviewDetailsDto>
+    ILogger<CreateReviewCommandHandler> logger, IReviewsCacheInvalidator cache) : IRequestHandler<CreateReviewCommand, ReviewDetailsDto>
 {
     public async Task<ReviewDetailsDto> Handle(CreateReviewCommand cmd, CancellationToken ct)
     {
@@ -64,6 +65,7 @@ public sealed class CreateReviewCommandHandler(IReviewRepository reviews, IMappe
         Activity.Current?.SetTag("review.movie_id", cmd.MovieId);
         Activity.Current?.SetTag("review.rating", cmd.Rating);
         await reviews.AddAsync(review, ct);   // унікальний індекс (movieId, author.userId) — страховка від гонки
+        await cache.MovieChangedAsync(review.MovieId, "ReviewCreated", ct);   // Лаб. 06: рейтинг і списки фільму застаріли
         logger.LogInformation("Створено відгук {ReviewId} на фільм {MovieId} від {UserId}: оцінка {Rating}, перевірений глядач {VerifiedViewer}",
             review.Id, review.MovieId, review.Author.UserId, review.Rating.Value, review.VerifiedViewer);
         return mapper.Map<ReviewDetailsDto>(review);

@@ -7,6 +7,10 @@
     <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="12.*" />
     <PackageReference Include="AutoMapper" Version="15.1.4" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="9.0.*" />
+    <!-- Лаб. 06: дворівневий кеш (Caching/): абстракції IMemoryCache / IDistributedCache, Meter, health check -->
+    <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="9.0.*" />
+    <PackageReference Include="Microsoft.Extensions.Diagnostics" Version="9.0.*" />
+    <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.Abstractions" Version="9.0.*" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Reviews.Domain\Reviews.Domain.csproj" />

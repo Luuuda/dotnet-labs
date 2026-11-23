@@ -1,3 +1,4 @@
+using BookingService.Bll.Caching;
 using BookingService.Bll.Mapping;
 using BookingService.Bll.Services;
 using BookingService.Bll.Validation;
@@ -26,6 +27,7 @@ public static class DependencyInjection
 
         services.AddSingleton(TimeProvider.System);
         services.AddSingleton<SeatSelectionValidator>();
+        services.AddBookingCaching();                         // Лаб. 06: ITwoLevelCache (L1 пам'ять → L2 Redis), метрики
         services.AddScoped<ICustomerService, CustomerService>();
         services.AddScoped<IScreeningService, ScreeningService>();
         services.AddScoped<IBookingService, BookingsService>();

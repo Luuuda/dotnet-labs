@@ -6,6 +6,8 @@ public interface IMovieService
 {
     Task<PagedResult<MovieListItemDto>> GetListAsync(MovieQuery query, CancellationToken ct);
     Task<MovieDto> GetByIdAsync(int id, CancellationToken ct);
+    /// <summary>Кілька карток за Id (для gRPC GetMoviesByIds); відсутні Id пропускаються.</summary>
+    Task<IReadOnlyList<MovieDto>> GetByIdsAsync(IReadOnlyCollection<int> ids, CancellationToken ct);
     Task<MovieDto> CreateAsync(CreateMovieDto input, CancellationToken ct);
     Task<MovieDto> UpdateAsync(int id, UpdateMovieDto input, CancellationToken ct);
     Task DeleteAsync(int id, CancellationToken ct);
@@ -26,6 +28,7 @@ public interface IScreeningService
 {
     Task<PagedResult<ScreeningDto>> GetListAsync(ScreeningQuery query, CancellationToken ct);
     Task<ScreeningDto> GetByIdAsync(long id, CancellationToken ct);
+    Task<IReadOnlyList<ScreeningDto>> GetByIdsAsync(IReadOnlyCollection<long> ids, CancellationToken ct);
     Task<ScreeningDto> CreateAsync(CreateScreeningDto input, CancellationToken ct);
     Task<ScreeningDto> ChangePriceAsync(long id, ChangePriceDto input, CancellationToken ct);
     Task CancelAsync(long id, CancellationToken ct);
