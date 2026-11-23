@@ -46,6 +46,13 @@ public sealed class CorrelationIdMiddleware(RequestDelegate next, ILogger<Correl
                 logger.LogInformation("Згенеровано новий CorrelationId {CorrelationId} для {Method} {Path}",
                     correlationId, context.Request.Method, context.Request.Path);
 
+            // Лаб. 06: gRPC-виклики логує серверний interceptor (метод, peer, статус gRPC, тривалість) — без дублювання тут
+            if (context.Request.ContentType?.StartsWith("application/grpc", StringComparison.OrdinalIgnoreCase) == true)
+            {
+                await next(context);
+                return;
+            }
+
             var sw = Stopwatch.StartNew();
             logger.LogInformation("Request started {Method} {Path}", context.Request.Method, context.Request.Path);
             try
