@@ -1,4 +1,5 @@
 using AutoMapper;
+using CatalogService.Bll.Caching;
 using CatalogService.Bll.Dtos;
 using CatalogService.Dal.Abstractions;
 using CatalogService.Domain.Entities;
@@ -6,10 +7,12 @@ using CatalogService.Domain.Exceptions;
 
 namespace CatalogService.Bll.Services;
 
-public sealed class GenreService(IUnitOfWork uow, IMapper mapper, TimeProvider clock) : IGenreService
+/// <summary>Довідники. Лаб. 06: жанри й зали — найчастіше читані й майже незмінні дані, кешуються з absolute expiration.</summary>
+public sealed class GenreService(IUnitOfWork uow, IMapper mapper, TimeProvider clock, ITwoLevelCache cache) : IGenreService
 {
     public async Task<IReadOnlyList<GenreDto>> GetAllAsync(CancellationToken ct) =>
-        mapper.Map<List<GenreDto>>((await uow.Genres.GetAllAsync(ct)).OrderBy(g => g.Name));
+        (await cache.GetOrCreateAsync<List<GenreDto>>(CacheKeys.Genres, CachePolicy.Reference,
+            async c => mapper.Map<List<GenreDto>>((await uow.Genres.GetAllAsync(c)).OrderBy(g => g.Name)), ct))!;
 
     /// <summary>Explicit Loading: жанр — першим запитом, його фільми — другим.</summary>
     public async Task<GenreWithMoviesDto> GetWithMoviesAsync(int id, CancellationToken ct) =>
@@ -28,5 +31,6 @@ public sealed class GenreService(IUnitOfWork uow, IMapper mapper, TimeProvider c
         mapper.Map<List<GenreStatsDto>>(await uow.MovieGenres.GetGenreStatsAsync(ct));
 
     public async Task<IReadOnlyList<HallDto>> GetHallsAsync(CancellationToken ct) =>
-        mapper.Map<List<HallDto>>((await uow.Halls.GetAllAsync(ct)).OrderBy(h => h.Id));
+        (await cache.GetOrCreateAsync<List<HallDto>>(CacheKeys.Halls, CachePolicy.Reference,
+            async c => mapper.Map<List<HallDto>>((await uow.Halls.GetAllAsync(c)).OrderBy(h => h.Id)), ct))!;
 }

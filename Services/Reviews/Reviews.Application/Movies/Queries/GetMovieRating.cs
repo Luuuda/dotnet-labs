@@ -1,3 +1,4 @@
+using Reviews.Application.Caching;
 using FluentValidation;
 using MediatR;
 using Reviews.Application.Common.Exceptions;
@@ -8,7 +9,13 @@ using Reviews.Application.Common.Models;
 namespace Reviews.Application.Movies.Queries;
 
 /// <summary>Рейтинг фільму, обчислений aggregation pipeline за відгуками.</summary>
-public sealed record GetMovieRatingQuery(int MovieId) : IQuery<MovieRatingDto>;
+public sealed record GetMovieRatingQuery(int MovieId) : IQuery<MovieRatingDto>, ICacheableQuery
+{
+    // Лаб. 06: рейтинг — aggregation pipeline по всіх відгуках фільму, читається найчастіше → reviews:movie:{id}:rating
+    CachePolicy ICacheableQuery.CachePolicy => CachePolicy.Rating;
+    string? ICacheableQuery.VersionKey => null;
+    string ICacheableQuery.GetCacheKey(string? version) => CacheKeys.MovieRating(MovieId);
+}
 
 public sealed class GetMovieRatingQueryValidator : AbstractValidator<GetMovieRatingQuery>
 {

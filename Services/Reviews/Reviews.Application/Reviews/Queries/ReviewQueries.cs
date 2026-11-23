@@ -1,3 +1,4 @@
+using Reviews.Application.Caching;
 using FluentValidation;
 using MediatR;
 using MongoDB.Bson;
@@ -10,7 +11,12 @@ using Reviews.Application.Common.Validation;
 namespace Reviews.Application.Reviews.Queries;
 
 // ---------- відгук за Id ----------
-public sealed record GetReviewByIdQuery(string Id) : IQuery<ReviewDetailsDto>;
+public sealed record GetReviewByIdQuery(string Id) : IQuery<ReviewDetailsDto>, ICacheableQuery
+{
+    CachePolicy ICacheableQuery.CachePolicy => CachePolicy.Review;
+    string? ICacheableQuery.VersionKey => null;
+    string ICacheableQuery.GetCacheKey(string? version) => CacheKeys.Review(Id);
+}
 
 public sealed class GetReviewByIdQueryValidator : AbstractValidator<GetReviewByIdQuery>
 {
@@ -33,7 +39,16 @@ public sealed record GetReviewsListQuery(
     string? Search = null,
     string? SortBy = null,
     int Page = 1,
-    int PageSize = Paging.DefaultPageSize) : IQuery<PagedResult<ReviewDto>>;
+    int PageSize = Paging.DefaultPageSize) : IQuery<PagedResult<ReviewDto>>, ICacheableQuery
+{
+    // Лаб. 06: кешуються сторінки відгуків ОДНОГО фільму (так читають Aggregator і сторінка фільму);
+    // будь-який запис про фільм змінює версію reviews:movie:{id}:list:version і всі його сторінки стають недосяжними.
+    bool ICacheableQuery.IsCacheable => MovieId is not null;
+    CachePolicy ICacheableQuery.CachePolicy => CachePolicy.List;
+    string? ICacheableQuery.VersionKey => MovieId is { } id ? CacheKeys.ListVersion(id) : null;
+    string ICacheableQuery.GetCacheKey(string? version) => CacheKeys.List(MovieId ?? 0, version ?? "0",
+        CacheKeys.Hash($"{UserId}|{MinRating}|{MaxRating}|{VerifiedOnly}|{Search}|{SortBy}|{Page}|{PageSize}"));
+}
 
 public sealed class GetReviewsListQueryValidator : AbstractValidator<GetReviewsListQuery>
 {

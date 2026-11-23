@@ -19,7 +19,7 @@ public sealed class MovieServiceTests
     {
         _uow.SetupGet(u => u.Movies).Returns(_movies.Object);
         _uow.SetupGet(u => u.Genres).Returns(_genres.Object);
-        _service = new MovieService(_uow.Object, MappingTests.CreateMapper(), TimeProvider.System, NullLogger<MovieService>.Instance);
+        _service = new MovieService(_uow.Object, MappingTests.CreateMapper(), TimeProvider.System, TestCache.Create(), NullLogger<MovieService>.Instance);
     }
 
     [Fact]

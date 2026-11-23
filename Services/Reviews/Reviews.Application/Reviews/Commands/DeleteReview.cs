@@ -1,3 +1,4 @@
+using Reviews.Application.Caching;
 using FluentValidation;
 using MediatR;
 using MongoDB.Bson;
@@ -21,7 +22,7 @@ public sealed class DeleteReviewCommandValidator : AbstractValidator<DeleteRevie
     }
 }
 
-public sealed class DeleteReviewCommandHandler(IReviewRepository reviews) : IRequestHandler<DeleteReviewCommand>
+public sealed class DeleteReviewCommandHandler(IReviewRepository reviews, IReviewsCacheInvalidator cache) : IRequestHandler<DeleteReviewCommand>
 {
     public async Task Handle(DeleteReviewCommand cmd, CancellationToken ct)
     {
@@ -32,5 +33,6 @@ public sealed class DeleteReviewCommandHandler(IReviewRepository reviews) : IReq
             throw new ConflictException($"Відгук {cmd.Id} уже змінено: очікувана версія {expected}, поточна {review.Version}");
 
         await reviews.DeleteAsync(review, ct);
+        await cache.ReviewChangedAsync(review.Id.ToString(), review.MovieId, "ReviewDeleted", ct);
     }
 }

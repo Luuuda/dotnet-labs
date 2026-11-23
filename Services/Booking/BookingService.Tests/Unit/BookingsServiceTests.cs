@@ -25,7 +25,7 @@ public sealed class BookingsServiceTests
     public BookingsServiceTests()
     {
         _service = new BookingsService(_m.Uow.Object, MappingConfigurationTests.CreateMapper(),
-            new SeatSelectionValidator(), TimeProvider.System, NullLogger<BookingsService>.Instance);
+            new SeatSelectionValidator(), TimeProvider.System, TestCache.Create(), NullLogger<BookingsService>.Instance);
     }
 
     [Fact]

@@ -1,3 +1,4 @@
+using CatalogService.Bll.Caching;
 using CatalogService.Bll.Mapping;
 using CatalogService.Bll.Services;
 using CatalogService.Bll.Validators;
@@ -11,7 +12,7 @@ public static class DependencyInjection
 {
     /// <summary>Реєстрація BLL (і DAL під ним). Web/API бачить лише цей метод і сервіси.</summary>
     public static IServiceCollection AddBusinessLogicLayer(this IServiceCollection services,
-        string connectionString, string? autoMapperLicenseKey)
+        string connectionString, string? autoMapperLicenseKey, bool cacheWarmUp = false)
     {
         services.AddSingleton(TimeProvider.System);
         services.AddDataAccessLayer(connectionString);
@@ -25,6 +26,7 @@ public static class DependencyInjection
         // Валідатори FluentValidation реєструються в DI і викликаються ЯВНО (FluentValidation.AspNetCore застарів)
         services.AddValidatorsFromAssemblyContaining<CreateMovieDtoValidator>();
 
+        services.AddCatalogCaching(cacheWarmUp);                  // Лаб. 06: ITwoLevelCache, метрики, прогрівання
         services.AddScoped<IMovieService, MovieService>();
         services.AddScoped<IGenreService, GenreService>();
         services.AddScoped<IScreeningService, ScreeningService>();

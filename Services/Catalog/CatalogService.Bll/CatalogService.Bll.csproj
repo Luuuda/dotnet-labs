@@ -5,6 +5,11 @@
     <PackageReference Include="FluentValidation" Version="12.*" />
     <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="12.*" />
     <PackageReference Include="Ardalis.Specification" Version="9.*" />
+    <!-- Лаб. 06: дворівневий кеш (Caching/): IMemoryCache + IDistributedCache, метрики, health check, прогрівання -->
+    <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="9.0.*" />
+    <PackageReference Include="Microsoft.Extensions.Diagnostics" Version="9.0.*" />
+    <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.Abstractions" Version="9.0.*" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="9.0.*" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\CatalogService.Dal\CatalogService.Dal.csproj" />
