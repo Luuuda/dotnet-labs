@@ -21,6 +21,7 @@ public sealed class MongoDbContext
         MongoMappings.Register();                        // мапінг має бути зареєстрований до першого звернення до БД
 
         var settings = MongoClientSettings.FromConnectionString(options.Value.ConnectionString);
+        options.Value.ConfigureClientSettings?.Invoke(settings);
         settings.ApplicationName = "cinema-reviews-api";
         Client = new MongoClient(settings);
         Database = Client.GetDatabase(options.Value.DatabaseName);

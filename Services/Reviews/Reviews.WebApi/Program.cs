@@ -1,7 +1,9 @@
 using System.Reflection;
 using System.Text;
 using System.Text.Json.Serialization;
-using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using MongoDB.Driver;
+using MongoDB.Driver.Core.Extensions.DiagnosticSources;
+using Reviews.Infrastructure.Persistence;
 using Reviews.Application;
 using Reviews.Infrastructure;
 using Reviews.WebApi.Infrastructure;
@@ -11,16 +13,25 @@ Console.OutputEncoding = Encoding.UTF8;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Serilog: структуровані логи (рівні й sinks — розділ "Serilog" в appsettings)
-builder.Host.UseSerilog((ctx, services, cfg) => cfg
-    .ReadFrom.Configuration(ctx.Configuration)
-    .ReadFrom.Services(services)
-    .Enrich.FromLogContext());
+builder.AddServiceDefaults();   // Лаб. 05: Serilog, OpenTelemetry, health checks, service discovery
+
+// Лаб. 05: рядок підключення від Aspire (ConnectionStrings:ReviewsDb) → секція MongoDb, яку читає Infrastructure.
+// Без Aspire лишаються резервні значення з appsettings.json.
+if (builder.Configuration.GetConnectionString("ReviewsDb") is { Length: > 0 } reviewsDb)
+{
+    builder.Configuration["MongoDb:ConnectionString"] = reviewsDb;
+    builder.Configuration["MongoDb:DatabaseName"] = MongoUrl.Create(reviewsDb).DatabaseName ?? "cinema_reviews";
+}
 
 // Кожен шар реєструє свої залежності сам
 builder.Services
     .AddApplication(builder.Configuration, typeof(Program).Assembly)   // MediatR + behaviors, валідатори, AutoMapper
     .AddInfrastructure(builder.Configuration);                          // MongoDB, репозиторії, Queries, індекси, сідінг, health
+
+// Лаб. 05: spans команд MongoDB (find, insert, aggregate…) у трасуванні OpenTelemetry
+builder.Services.PostConfigure<MongoDbOptions>(o => o.ConfigureClientSettings = settings =>
+    settings.ClusterConfigurator = cluster => cluster.Subscribe(
+        new DiagnosticsActivityEventSubscriber(new InstrumentationOptions { CaptureCommandText = true })));
 
 builder.Services.AddControllers(o =>
         // уся валідація — у pipeline MediatR (ValidationBehavior), а не неявними [Required] від MVC
@@ -50,6 +61,7 @@ builder.Services.AddSwaggerGen(options =>
 
 var app = builder.Build();
 
+app.UseCorrelationId();                           // Лаб. 05: X-Correlation-Id з Gateway (або новий)
 app.UseMiddleware<LogContextMiddleware>();        // CorrelationId, UserId, RequestPath у кожен запис логу
 app.UseSerilogRequestLogging();
 app.UseExceptionHandler();                        // винятки → ProblemDetails (GlobalExceptionHandler)
@@ -60,18 +72,7 @@ app.UseSwaggerUI(o => o.DocumentTitle = "Cinema Reviews API");
 
 app.MapGet("/", () => Results.Redirect("/swagger")).ExcludeFromDescription();
 app.MapControllers();
-app.MapHealthChecks("/health", new HealthCheckOptions
-{
-    ResponseWriter = async (ctx, report) =>
-    {
-        ctx.Response.ContentType = "application/json";
-        await ctx.Response.WriteAsJsonAsync(new
-        {
-            status = report.Status.ToString(),
-            checks = report.Entries.Select(e => new { name = e.Key, status = e.Value.Status.ToString(), e.Value.Description })
-        });
-    }
-});
+app.MapDefaultEndpoints();                        // Лаб. 05: /health (self + mongodb), /alive
 
 app.Run();
 

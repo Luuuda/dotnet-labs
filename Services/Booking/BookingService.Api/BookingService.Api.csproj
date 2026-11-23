@@ -9,6 +9,8 @@
     <PackageReference Include="Swashbuckle.AspNetCore" Version="8.1.*" />
   </ItemGroup>
   <ItemGroup>
+    <!-- Лаб. 05: спільні налаштування платформи (логування, трасування, health checks) -->
+    <ProjectReference Include="..\..\..\Platform.ServiceDefaults\Platform.ServiceDefaults.csproj" />
     <ProjectReference Include="..\BookingService.Bll\BookingService.Bll.csproj" />
   </ItemGroup>
 </Project>

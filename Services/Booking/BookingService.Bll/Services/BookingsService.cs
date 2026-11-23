@@ -49,6 +49,9 @@ public sealed class BookingsService(
 
     public async Task<BookingDto> CreateAsync(CreateBookingDto input, CancellationToken ct)
     {
+        using var activity = BookingTelemetry.Source.StartActivity("CreateBooking");
+        activity?.SetTag("booking.screening_id", input.ScreeningId);
+        activity?.SetTag("booking.seats", input.Seats.Count);
         long bookingId;
         await uow.BeginTransactionAsync(IsolationLevel.ReadCommitted, ct);
         try
@@ -117,12 +120,17 @@ public sealed class BookingsService(
             throw;
         }
 
-        logger.LogInformation("Створено бронювання {BookingId} на {SeatCount} місць", bookingId, input.Seats.Count);
-        return await GetAsync(bookingId, ct);
+        activity?.SetTag("booking.id", bookingId);
+        var created = await GetAsync(bookingId, ct);
+        logger.LogInformation("Створено бронювання {BookingId}: сеанс {ScreeningId}, {SeatCount} місць на суму {Amount}, статус {Status}",
+            bookingId, input.ScreeningId, input.Seats.Count, created.TotalAmount, created.Status);
+        return created;
     }
 
     public async Task<BookingDto> ConfirmAsync(long id, BookingActionDto? action, CancellationToken ct)
     {
+        using var activity = BookingTelemetry.Source.StartActivity("ConfirmBooking");
+        activity?.SetTag("booking.id", id);
         var expected = Guards.OptionalRowVersion(action?.RowVersion);
         await uow.BeginTransactionAsync(IsolationLevel.ReadCommitted, ct);
         try
@@ -154,12 +162,16 @@ public sealed class BookingsService(
             throw;
         }
 
-        logger.LogInformation("Бронювання {BookingId}: місця підтверджено", id);
+        logger.LogInformation("Бронювання {BookingId}: місця підтверджено, статус {Status}", id, BookingStatus.SeatsConfirmed);
         return await GetAsync(id, ct);
     }
 
     public async Task<PaymentResultDto> PayAsync(long id, PayBookingDto input, string? idempotencyKey, CancellationToken ct)
     {
+        using var activity = BookingTelemetry.Source.StartActivity("PayBooking");
+        activity?.SetTag("booking.id", id);
+        activity?.SetTag("payment.amount", input.Amount);
+        activity?.SetTag("payment.provider", input.Provider);
         // Ідемпотентність: той самий Id транзакції шлюзу (або заголовок Idempotency-Key) не створить другу оплату
         var key = string.IsNullOrWhiteSpace(input.ExternalTransactionId) ? idempotencyKey : input.ExternalTransactionId;
         if (!string.IsNullOrWhiteSpace(key))
@@ -208,7 +220,8 @@ public sealed class BookingsService(
             throw;
         }
 
-        logger.LogInformation("Бронювання {BookingId} оплачено, оплата {PaymentId}", id, paymentId);
+        logger.LogInformation("Бронювання {BookingId} оплачено: {Amount} UAH через {Provider}, оплата {PaymentId}, статус {Status}",
+            id, input.Amount, input.Provider, paymentId, BookingStatus.Paid);
         var payment = await uow.Payments.GetByIdAsync(paymentId, ct)
                       ?? throw new InvalidOperationException("Оплату не знайдено одразу після збереження");
         return new PaymentResultDto(mapper.Map<PaymentDto>(payment), Replayed: false);
@@ -243,6 +256,9 @@ public sealed class BookingsService(
     /// </summary>
     private async Task<BookingDto> ChangeStatusAsync(long id, string status, BookingActionDto? action, string defaultReason, CancellationToken ct)
     {
+        using var activity = BookingTelemetry.Source.StartActivity("ChangeBookingStatus");
+        activity?.SetTag("booking.id", id);
+        activity?.SetTag("booking.status", status);
         var expected = Guards.OptionalRowVersion(action?.RowVersion);
         await uow.Bookings.ChangeStatusAsync(id, status, Actor, action?.Reason ?? defaultReason, expected, ct);
         logger.LogInformation("Бронювання {BookingId} → {Status}", id, status);

@@ -8,16 +8,11 @@ Console.OutputEncoding = Encoding.UTF8;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.AddServiceDefaults();   // Лаб. 05: Serilog, OpenTelemetry (у т. ч. SQL), health checks, service discovery
+
 // Рядок підключення: appsettings / змінна оточення ConnectionStrings__CatalogDb (так його передає Aspire)
 var connectionString = builder.Configuration.GetConnectionString("CatalogDb")
     ?? throw new InvalidOperationException("Connection string 'CatalogDb' is missing");
-
-// Serilog: структуровані логи, sinks і рівні — у appsettings.json (розділ "Serilog").
-// SQL-команди EF Core (Microsoft.EntityFrameworkCore.Database.Command) логуються на рівні Information.
-builder.Host.UseSerilog((ctx, services, cfg) => cfg
-    .ReadFrom.Configuration(ctx.Configuration)
-    .ReadFrom.Services(services)
-    .Enrich.FromLogContext());
 
 builder.Services.AddBusinessLogicLayer(connectionString,
     builder.Configuration["AutoMapper:LicenseKey"] is { Length: > 0 } key ? key : null);
@@ -43,6 +38,7 @@ builder.Services.AddSwaggerGen(options =>
 
 var app = builder.Build();
 
+app.UseCorrelationId();                           // Лаб. 05: X-Correlation-Id з Gateway (або новий)
 app.UseMiddleware<LogContextMiddleware>();        // CorrelationId, UserId, RequestPath → у кожен запис логу
 app.UseSerilogRequestLogging();
 app.UseExceptionHandler();                        // винятки → ProblemDetails (GlobalExceptionHandler)
@@ -60,6 +56,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.MapGet("/", () => Results.Redirect("/swagger")).ExcludeFromDescription();
+app.MapDefaultEndpoints();                        // Лаб. 05: /health, /alive
 app.MapControllers();
 
 app.Run();

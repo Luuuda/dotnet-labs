@@ -31,6 +31,8 @@ public sealed class MovieService(IUnitOfWork uow, IMapper mapper, TimeProvider c
 
     public async Task<MovieDto> CreateAsync(CreateMovieDto input, CancellationToken ct)
     {
+        using var activity = CatalogTelemetry.Source.StartActivity("CreateMovie");
+        activity?.SetTag("movie.title", input.Title);
         var title = input.Title.Trim();
         if (await uow.Movies.ExistsAsync(title, input.ReleaseYear, null, ct))
             throw new ConflictException($"Фільм «{title}» ({input.ReleaseYear}) уже є в каталозі");
@@ -43,12 +45,16 @@ public sealed class MovieService(IUnitOfWork uow, IMapper mapper, TimeProvider c
         await uow.Movies.AddAsync(movie, ct);
         await uow.SaveChangesAsync(ct);                          // один SaveChanges — одна транзакція
 
-        logger.LogInformation("Створено фільм {MovieId} «{Title}»", movie.Id, movie.Title);
+        activity?.SetTag("movie.id", movie.Id);
+        logger.LogInformation("Створено фільм {MovieId} «{Title}» ({ReleaseYear}), жанрів: {GenresCount}",
+            movie.Id, movie.Title, movie.ReleaseYear, movie.MovieGenres.Count);
         return await GetByIdAsync(movie.Id, ct);
     }
 
     public async Task<MovieDto> UpdateAsync(int id, UpdateMovieDto input, CancellationToken ct)
     {
+        using var activity = CatalogTelemetry.Source.StartActivity("UpdateMovie");
+        activity?.SetTag("movie.id", id);
         var movie = await LoadAsync(id, ct);
         uow.Movies.SetExpectedVersion(movie, Convert.FromBase64String(input.RowVersion));
 

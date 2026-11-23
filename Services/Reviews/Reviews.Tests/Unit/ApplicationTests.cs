@@ -140,7 +140,7 @@ public sealed class ApplicationTests
         var repository = new Mock<IReviewRepository>();
         repository.Setup(r => r.GetByIdAsync(review.Id, It.IsAny<CancellationToken>())).ReturnsAsync(review);
 
-        var handler = new UpdateReviewCommandHandler(repository.Object, CreateMapper());
+        var handler = new UpdateReviewCommandHandler(repository.Object, CreateMapper(), NullLogger<UpdateReviewCommandHandler>.Instance);
 
         await Assert.ThrowsAsync<ConflictException>(() => handler.Handle(
             new UpdateReviewCommand(review.Id.ToString(), 4, "Новий текст", null, ExpectedVersion: 1), CancellationToken.None));
@@ -150,7 +150,7 @@ public sealed class ApplicationTests
     [Fact]
     public async Task Update_of_missing_review_is_not_found()
     {
-        var handler = new UpdateReviewCommandHandler(Mock.Of<IReviewRepository>(), CreateMapper());
+        var handler = new UpdateReviewCommandHandler(Mock.Of<IReviewRepository>(), CreateMapper(), NullLogger<UpdateReviewCommandHandler>.Instance);
         await Assert.ThrowsAsync<NotFoundException>(() => handler.Handle(
             new UpdateReviewCommand(ObjectId.GenerateNewId().ToString(), 4, "Текст", null, 0), CancellationToken.None));
     }
