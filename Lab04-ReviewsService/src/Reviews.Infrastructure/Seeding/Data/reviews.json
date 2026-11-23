@@ -1,0 +1,63 @@
+[
+  {
+    "movieId": 3, "movieTitle": "Дюна: Частина друга",
+    "author": { "userId": "6f1c2a10-0000-4000-8000-000000000001", "displayName": "Олена Коваленко" },
+    "rating": 5, "text": "Найкраще, що я бачила в IMAX. Масштаб, звук, кожен кадр — як картина.",
+    "aspects": { "story": 5, "acting": 5, "visuals": 5, "sound": 5 }, "verifiedViewer": true,
+    "comments": [
+      { "author": { "userId": "6f1c2a10-0000-4000-8000-000000000002", "displayName": "Андрій Шевчук" }, "text": "Згоден, IMAX того вартий!" },
+      { "author": { "userId": "6f1c2a10-0000-4000-8000-000000000003", "displayName": "Марія Бондар" }, "text": "Звук справді неймовірний." }
+    ]
+  },
+  {
+    "movieId": 3, "movieTitle": "Дюна: Частина друга",
+    "author": { "userId": "6f1c2a10-0000-4000-8000-000000000002", "displayName": "Андрій Шевчук" },
+    "rating": 4, "text": "Фінал трохи поспішний, але дуель — топ.", "verifiedViewer": false
+  },
+  {
+    "movieId": 3, "movieTitle": "Дюна: Частина друга",
+    "author": { "userId": "6f1c2a10-0000-4000-8000-000000000003", "displayName": "Марія Бондар" },
+    "rating": 4, "text": "Саундтрек і візуал — окреме задоволення.", "aspects": { "visuals": 5, "music": 5, "story": 3 }, "verifiedViewer": true
+  },
+  {
+    "movieId": 1, "movieTitle": "Довбуш",
+    "author": { "userId": "6f1c2a10-0000-4000-8000-000000000001", "displayName": "Олена Коваленко" },
+    "rating": 5, "text": "Гарні Карпати і сильна головна роль.", "aspects": { "story": 4, "acting": 5 }, "verifiedViewer": true,
+    "comments": [
+      { "author": { "userId": "6f1c2a10-0000-4000-8000-000000000004", "displayName": "Тарас Мельник" }, "text": "Костюми теж вражають." }
+    ]
+  },
+  {
+    "movieId": 1, "movieTitle": "Довбуш",
+    "author": { "userId": "6f1c2a10-0000-4000-8000-000000000004", "displayName": "Тарас Мельник" },
+    "rating": 4, "text": "Атмосфера й музика чудові, але початок затягнутий.", "verifiedViewer": false
+  },
+  {
+    "movieId": 2, "movieTitle": "Оппенгеймер",
+    "author": { "userId": "6f1c2a10-0000-4000-8000-000000000002", "displayName": "Андрій Шевчук" },
+    "rating": 5, "text": "Три години пролетіли непомітно.", "aspects": { "story": 5, "acting": 5, "sound": 4 }, "verifiedViewer": true
+  },
+  {
+    "movieId": 4, "movieTitle": "Мавка. Лісова пісня",
+    "author": { "userId": "6f1c2a10-0000-4000-8000-000000000003", "displayName": "Марія Бондар" },
+    "rating": 4, "text": "Діти в захваті, дорослим теж цікаво.", "verifiedViewer": true,
+    "comments": [
+      { "author": { "userId": "6f1c2a10-0000-4000-8000-000000000001", "displayName": "Олена Коваленко" }, "text": "Ходили з малими — всім сподобалось." }
+    ]
+  },
+  {
+    "movieId": 7, "movieTitle": "Інтерстеллар",
+    "author": { "userId": "6f1c2a10-0000-4000-8000-000000000004", "displayName": "Тарас Мельник" },
+    "rating": 5, "text": "Перегляд на великому екрані — зовсім інші емоції, ніж удома.", "aspects": { "visuals": 5, "music": 5 }, "verifiedViewer": true
+  },
+  {
+    "movieId": 5, "movieTitle": "Головоломка 2",
+    "author": { "userId": "6f1c2a10-0000-4000-8000-000000000005", "displayName": "Ірина Ткаченко" },
+    "rating": 3, "text": "Мило, але перша частина була сильнішою.", "verifiedViewer": false
+  },
+  {
+    "movieId": 6, "movieTitle": "Захар Беркут",
+    "author": { "userId": "6f1c2a10-0000-4000-8000-000000000005", "displayName": "Ірина Ткаченко" },
+    "rating": 4, "text": "Видовищні батальні сцени і гарна природа.", "aspects": { "visuals": 5, "story": 3 }, "verifiedViewer": true
+  }
+]
