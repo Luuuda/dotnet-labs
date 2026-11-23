@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using BookingService.Bll.Dtos;
 using BookingService.Bll.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -12,7 +13,7 @@ namespace BookingService.Api.Controllers;
 [ApiController]
 [Route("api/bookings")]
 [Produces("application/json")]
-public sealed class BookingsController(IBookingService bookings) : ControllerBase
+public sealed class BookingsController(IBookingService bookings, ILogger<BookingsController> logger) : ControllerBase
 {
     /// <summary>Бронювання з квитками та історією статусів.</summary>
     [HttpGet("{id:long}")]
@@ -32,6 +33,10 @@ public sealed class BookingsController(IBookingService bookings) : ControllerBas
     public async Task<ActionResult<BookingDto>> Create(CreateBookingDto input, CancellationToken ct)
     {
         var created = await bookings.CreateAsync(input, ct);
+        Activity.Current?.SetTag("booking.id", created.Id);           // бізнес-атрибути на span HTTP-запиту
+        Activity.Current?.SetTag("booking.status", created.Status);
+        logger.LogInformation("API: бронювання {BookingId} створено через канал {Channel}, статус {Status}",
+            created.Id, created.Channel, created.Status);
         return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
     }
 
@@ -44,6 +49,8 @@ public sealed class BookingsController(IBookingService bookings) : ControllerBas
         [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] BookingActionDto? action, CancellationToken ct)
     {
         await bookings.ConfirmAsync(id, action, ct);
+        Activity.Current?.SetTag("booking.id", id);
+        logger.LogInformation("API: бронювання {BookingId} підтверджено", id);
         return NoContent();
     }
 
@@ -61,6 +68,10 @@ public sealed class BookingsController(IBookingService bookings) : ControllerBas
         [FromHeader(Name = "Idempotency-Key")] string? idempotencyKey, CancellationToken ct)
     {
         var result = await bookings.PayAsync(id, input, idempotencyKey, ct);
+        Activity.Current?.SetTag("booking.id", id);
+        Activity.Current?.SetTag("payment.replayed", result.Replayed);
+        logger.LogInformation("API: оплата {PaymentId} бронювання {BookingId}, повторний запит: {Replayed}",
+            result.Payment.Id, id, result.Replayed);
         return result.Replayed
             ? Ok(result.Payment)
             : CreatedAtAction(nameof(Payments), new { id }, result.Payment);
@@ -87,6 +98,8 @@ public sealed class BookingsController(IBookingService bookings) : ControllerBas
         [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] BookingActionDto? action, CancellationToken ct)
     {
         await bookings.CancelAsync(id, action, ct);
+        Activity.Current?.SetTag("booking.id", id);
+        logger.LogInformation("API: бронювання {BookingId} скасовано", id);
         return NoContent();
     }
 

@@ -71,6 +71,8 @@ public static class Extensions
             // фільтрація шумних логів інфраструктури
             .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
             .MinimumLevel.Override("Microsoft.Hosting.Lifetime", LogEventLevel.Information)
+            // оброблені доменні винятки (404/409/400) логують самі IExceptionHandler-и, без дубля рівня Error від middleware
+            .MinimumLevel.Override("Microsoft.AspNetCore.Diagnostics.ExceptionHandlerMiddleware", LogEventLevel.Fatal)
             .MinimumLevel.Override("Microsoft.EntityFrameworkCore", LogEventLevel.Warning)
             .MinimumLevel.Override("System.Net.Http.HttpClient", LogEventLevel.Warning)
             .MinimumLevel.Override("Polly", LogEventLevel.Warning)

@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using CatalogService.Api.Infrastructure;
 using CatalogService.Bll.Dtos;
 using CatalogService.Bll.Services;
@@ -10,7 +11,7 @@ namespace CatalogService.Api.Controllers;
 [ApiController]
 [Route("api/screenings")]
 [Produces("application/json")]
-public sealed class ScreeningsController(IScreeningService screenings) : ApiControllerBase
+public sealed class ScreeningsController(IScreeningService screenings, ILogger<ScreeningsController> logger) : ApiControllerBase
 {
     /// <summary>Розклад з фільтрами (дата, фільм, зала, формат, ціна), сортуванням і пагінацією — друга специфікація.</summary>
     [HttpGet]
@@ -42,6 +43,8 @@ public sealed class ScreeningsController(IScreeningService screenings) : ApiCont
     {
         if (!await IsValidAsync(validator, input, ct)) return ValidationProblem(ModelState);
         var created = await screenings.CreateAsync(input, ct);
+        Activity.Current?.SetTag("screening.id", created.Id);
+        logger.LogInformation("API: сеанс {ScreeningId} фільму {MovieId} заплановано на {StartsAt}", created.Id, created.MovieId, created.StartsAt);
         return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
     }
 
@@ -66,6 +69,8 @@ public sealed class ScreeningsController(IScreeningService screenings) : ApiCont
     public async Task<IActionResult> Cancel(long id, CancellationToken ct)
     {
         await screenings.CancelAsync(id, ct);
+        Activity.Current?.SetTag("screening.id", id);
+        logger.LogInformation("API: сеанс {ScreeningId} скасовано", id);
         return NoContent();
     }
 }

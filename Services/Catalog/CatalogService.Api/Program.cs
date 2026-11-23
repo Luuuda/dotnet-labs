@@ -1,8 +1,9 @@
+using System.Diagnostics;
 using System.Reflection;
 using System.Text;
 using CatalogService.Api.Infrastructure;
 using CatalogService.Bll;
-using Serilog;
+using Platform.ServiceDefaults;
 
 Console.OutputEncoding = Encoding.UTF8;
 
@@ -21,8 +22,8 @@ builder.Services.AddControllers();
 
 builder.Services.AddProblemDetails(o => o.CustomizeProblemDetails = ctx =>
 {
-    ctx.ProblemDetails.Extensions["traceId"] = ctx.HttpContext.TraceIdentifier;
-    if (ctx.HttpContext.Items[LogContextMiddleware.CorrelationItemKey] is string correlationId)
+    ctx.ProblemDetails.Extensions["traceId"] = Activity.Current?.TraceId.ToString() ?? ctx.HttpContext.TraceIdentifier;
+    if (ctx.HttpContext.Items[CorrelationIdMiddleware.ItemKey] is string correlationId)   // CorrelationId з ServiceDefaults
         ctx.ProblemDetails.Extensions["correlationId"] = correlationId;
 });
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
@@ -38,9 +39,7 @@ builder.Services.AddSwaggerGen(options =>
 
 var app = builder.Build();
 
-app.UseCorrelationId();                           // Лаб. 05: X-Correlation-Id з Gateway (або новий)
-app.UseMiddleware<LogContextMiddleware>();        // CorrelationId, UserId, RequestPath → у кожен запис логу
-app.UseSerilogRequestLogging();
+app.UseCorrelationId();                           // Лаб. 05: X-Correlation-Id з Gateway (або новий) → LogContext, відповідь, лог початку/кінця запиту
 app.UseExceptionHandler();                        // винятки → ProblemDetails (GlobalExceptionHandler)
 app.UseStatusCodePages();
 

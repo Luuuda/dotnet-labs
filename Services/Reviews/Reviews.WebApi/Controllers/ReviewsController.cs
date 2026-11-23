@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 using Reviews.Application.Common.Models;
 using Reviews.Application.Reviews.Commands;
@@ -8,7 +9,7 @@ namespace Reviews.WebApi.Controllers;
 
 /// <summary>Відгуки глядачів (колекція reviews) з вкладеними коментарями.</summary>
 [Route("api/reviews")]
-public sealed class ReviewsController : ApiControllerBase
+public sealed class ReviewsController(ILogger<ReviewsController> logger) : ApiControllerBase
 {
     /// <summary>
     /// Список відгуків: фільтри (фільм, автор, оцінка, перевірений глядач), повнотекстовий пошук search,
@@ -52,6 +53,9 @@ public sealed class ReviewsController : ApiControllerBase
     {
         var review = await Sender.Send(command, ct);
         SetETag(review.Version);
+        Activity.Current?.SetTag("review.id", review.Id);
+        Activity.Current?.SetTag("movie.id", review.MovieId);
+        logger.LogInformation("API: відгук {ReviewId} на фільм {MovieId} опубліковано, оцінка {Rating}", review.Id, review.MovieId, review.Rating);
         return CreatedAtAction(nameof(GetById), new { id = review.Id }, review);
     }
 
@@ -66,6 +70,8 @@ public sealed class ReviewsController : ApiControllerBase
     {
         var review = await Sender.Send(MapCommand<UpdateReviewCommand>(request, id, IfMatchVersion()), ct);
         SetETag(review.Version);
+        Activity.Current?.SetTag("review.id", review.Id);
+        logger.LogInformation("API: відгук {ReviewId} оновлено до версії {Version}", review.Id, review.Version);
         return Ok(review);
     }
 
@@ -78,6 +84,8 @@ public sealed class ReviewsController : ApiControllerBase
     public async Task<IActionResult> Delete(string id, [FromHeader(Name = "If-Match")] string? ifMatch, CancellationToken ct)
     {
         await Sender.Send(new DeleteReviewCommand(id, IfMatchVersion()), ct);
+        Activity.Current?.SetTag("review.id", id);
+        logger.LogInformation("API: відгук {ReviewId} видалено", id);
         return NoContent();
     }
 
