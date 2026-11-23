@@ -35,7 +35,7 @@
 
 Діаграма контекстів (пунктир — логічне посилання за Id без FOREIGN KEY, подія оновлює копію):
 
-![Контексти та потоки даних](docs/erd/contexts.png)
+![Контексти та потоки даних](erd/contexts.png)
 
 ## 2. Політика дублювання даних
 
@@ -107,13 +107,13 @@ mongodb://localhost:27017/cinema_reviews
 
 ### ERD Проєкту №1
 
-![ERD CinemaBooking](docs/erd/booking.png)
+![ERD CinemaBooking](erd/booking.png)
 
-Вихідний код діаграми: [`docs/erd/booking.mmd`](docs/erd/booking.mmd) (Mermaid).
+Вихідний код діаграми: [`docs/erd/booking.mmd`](erd/booking.mmd) (Mermaid).
 
 Та сама схема, згенерована з розгорнутої бази `CinemaBooking` (Rider → Database → Diagrams → Show Diagram). Стрілки — реальні FOREIGN KEY; від `Screenings` немає жодного FK за межі бази:
 
-![ERD CinemaBooking з бази](docs/erd/booking-db.png)
+![ERD CinemaBooking з бази](erd/booking-db.png)
 
 **Таблиці (9):** Customers, Promotions, Screenings (локальна копія), Bookings, BookingDetails, Tickets, BookingStatusHistory, BookingStatusTransitions, Payments. Плюс представлення `vw_BookingSummary`.
 
@@ -194,13 +194,13 @@ SELECT Status FROM dbo.Bookings WHERE Id = 3;   -- лишився Submitted
 
 ### ERD Проєкту №2
 
-![ERD CinemaCatalog](docs/erd/catalog.png)
+![ERD CinemaCatalog](erd/catalog.png)
 
-Вихідний код діаграми: [`docs/erd/catalog.mmd`](docs/erd/catalog.mmd) (Mermaid).
+Вихідний код діаграми: [`docs/erd/catalog.mmd`](erd/catalog.mmd) (Mermaid).
 
 Та сама схема, згенерована з розгорнутої бази `CinemaCatalog` (Rider → Database → Diagrams → Show Diagram):
 
-![ERD CinemaCatalog з бази](docs/erd/catalog-db.png)
+![ERD CinemaCatalog з бази](erd/catalog-db.png)
 
 **6 сутностей:** Movies, MovieDetails, Genres, MovieGenres, Halls, Screenings. Плюс представлення `vw_Schedule`.
 

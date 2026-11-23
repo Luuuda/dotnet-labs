@@ -1,0 +1,72 @@
+{
+  "movieId": 3,
+  "movie": {
+    "id": 3,
+    "title": "Дюна: Частина друга",
+    "originalTitle": "Dune: Part Two",
+    "releaseYear": 2024,
+    "durationMinutes": 166,
+    "ageRating": "12+",
+    "director": "Дені Вільнев",
+    "description": "Пол Атрід об'єднується з фрименами, щоб помститися за свою родину.",
+    "genres": [
+      "Фантастика",
+      "Драма",
+      "Пригоди"
+    ]
+  },
+  "screenings": [
+    {
+      "id": 1,
+      "startsAt": "2026-12-05T16:00:00",
+      "hallName": "IMAX",
+      "format": "IMAX",
+      "language": "англійська, субтитри",
+      "price": 250
+    },
+    {
+      "id": 2,
+      "startsAt": "2026-12-05T19:30:00",
+      "hallName": "Зала 1",
+      "format": "2D",
+      "language": "українська",
+      "price": 160
+    },
+    {
+      "id": 7,
+      "startsAt": "2026-12-07T18:00:00",
+      "hallName": "IMAX",
+      "format": "IMAX",
+      "language": "українська",
+      "price": 250
+    }
+  ],
+  "opinion": {
+    "averageRating": 4.33,
+    "reviewsCount": 3,
+    "topReviews": [
+      {
+        "author": "Олена Коваленко",
+        "rating": 5,
+        "text": "Найкраще, що я бачила в IMAX. Масштаб, звук, кожен кадр — як картина.",
+        "verifiedViewer": true,
+        "createdAt": "2026-11-23T17:21:15.243Z"
+      },
+      {
+        "author": "Марія Бондар",
+        "rating": 4,
+        "text": "Саундтрек і візуал — окреме задоволення.",
+        "verifiedViewer": true,
+        "createdAt": "2026-11-23T17:21:15.244Z"
+      },
+      {
+        "author": "Андрій Шевчук",
+        "rating": 4,
+        "text": "Фінал трохи поспішний, але дуель — топ.",
+        "verifiedViewer": false,
+        "createdAt": "2026-11-23T17:21:15.243Z"
+      }
+    ]
+  },
+  "warnings": []
+}
