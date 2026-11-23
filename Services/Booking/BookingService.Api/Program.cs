@@ -1,9 +1,12 @@
 using System.Diagnostics;
 using System.Reflection;
 using System.Text;
+using BookingService.Api.Grpc;
 using BookingService.Api.Infrastructure;
+using BookingService.Bll.Caching;
 using BookingService.Bll;
 using Platform.ServiceDefaults;
+using Platform.ServiceDefaults.Grpc;
 
 Console.OutputEncoding = Encoding.UTF8;   // українські повідомлення в консолі без «кракозябр»
 
@@ -22,6 +25,31 @@ var autoMapperKey = builder.Configuration["AutoMapper:LicenseKey"];
 // --- DI: BLL (а під ним DAL з Unit of Work — Scoped, одне з'єднання на запит) -----------
 builder.Services.AddBusinessLogicLayer(connectionString, commandTimeout,
     string.IsNullOrWhiteSpace(autoMapperKey) ? null : autoMapperKey);
+
+// --- Лаб. 06: дворівневий кеш ----------------------------------------------------------------
+// L1 — пам'ять процесу з обмеженням розміру (Size запису = КБ JSON; разом ≈ 5 МБ), витіснення 20 % за пріоритетом.
+builder.Services.AddMemoryCache(o =>
+{
+    o.SizeLimit = 5_000;
+    o.CompactionPercentage = 0.2;
+    o.TrackStatistics = true;
+});
+// L2 — Redis (ConnectionStrings:redis від AppHost); без Redis — кеш у пам'яті (тести, окремий запуск)
+if (builder.Configuration.GetConnectionString("redis") is { Length: > 0 })
+    builder.AddRedisDistributedCache("redis", configureOptions: o =>
+    {
+        o.AbortOnConnectFail = false;           // недоступний Redis не валить старт сервісу
+        o.ConnectTimeout = 2000;                // збій кешу коштує ≤ 2 с, далі L2 пропускається на 30 с (TwoLevelCache)
+        o.AsyncTimeout = 1000;
+        o.SyncTimeout = 1000;
+        o.UseIPv4Loopback();                    // localhost → 127.0.0.1: на Windows спроба ::1 додає ~2 с до з'єднання
+    });
+else
+    builder.Services.AddDistributedMemoryCache();
+builder.Services.AddHealthChecks().AddCheck<CacheStatisticsHealthCheck>("booking-cache");
+
+// --- Лаб. 06: gRPC: окремий порт Kestrel лише з HTTP/2 (appsettings.json, Kestrel:Endpoints:Grpc) ---------
+builder.AddPlatformGrpc();
 
 builder.Services.AddControllers();
 
@@ -61,6 +89,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.MapGet("/", () => Results.Redirect("/swagger")).ExcludeFromDescription();
+app.MapGrpcService<BookingGrpcService>();      // Лаб. 06: gRPC-контракт booking.proto
 app.MapDefaultEndpoints();                      // Лаб. 05: /health, /alive
 app.MapControllers();
 

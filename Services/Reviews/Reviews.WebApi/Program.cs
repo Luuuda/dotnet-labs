@@ -7,8 +7,11 @@ using MongoDB.Driver.Core.Extensions.DiagnosticSources;
 using Reviews.Infrastructure.Persistence;
 using Reviews.Application;
 using Reviews.Infrastructure;
+using Reviews.Application.Caching;
+using Reviews.WebApi.Grpc;
 using Reviews.WebApi.Infrastructure;
 using Platform.ServiceDefaults;
+using Platform.ServiceDefaults.Grpc;
 
 Console.OutputEncoding = Encoding.UTF8;
 
@@ -23,6 +26,31 @@ if (builder.Configuration.GetConnectionString("ReviewsDb") is { Length: > 0 } re
     builder.Configuration["MongoDb:ConnectionString"] = reviewsDb;
     builder.Configuration["MongoDb:DatabaseName"] = MongoUrl.Create(reviewsDb).DatabaseName ?? "cinema_reviews";
 }
+
+// --- Лаб. 06: дворівневий кеш (CachingBehavior у pipeline MediatR) --------------------------------
+// L1 — пам'ять процесу з обмеженням розміру (Size запису = КБ JSON; разом ≈ 5 МБ), витіснення 20 % за пріоритетом.
+builder.Services.AddMemoryCache(o =>
+{
+    o.SizeLimit = 5_000;
+    o.CompactionPercentage = 0.2;
+    o.TrackStatistics = true;
+});
+// L2 — Redis (ConnectionStrings:redis від AppHost); без Redis — кеш у пам'яті (тести, окремий запуск)
+if (builder.Configuration.GetConnectionString("redis") is { Length: > 0 })
+    builder.AddRedisDistributedCache("redis", configureOptions: o =>
+    {
+        o.AbortOnConnectFail = false;           // недоступний Redis не валить старт сервісу
+        o.ConnectTimeout = 2000;                // збій кешу коштує ≤ 2 с, далі L2 пропускається на 30 с (TwoLevelCache)
+        o.AsyncTimeout = 1000;
+        o.SyncTimeout = 1000;
+        o.UseIPv4Loopback();                    // localhost → 127.0.0.1: на Windows спроба ::1 додає ~2 с до з'єднання
+    });
+else
+    builder.Services.AddDistributedMemoryCache();
+builder.Services.AddHealthChecks().AddCheck<CacheStatisticsHealthCheck>("reviews-cache");
+
+// --- Лаб. 06: gRPC: окремий порт Kestrel лише з HTTP/2 (appsettings.json, Kestrel:Endpoints:Grpc) ---------
+builder.AddPlatformGrpc();
 
 // Кожен шар реєструє свої залежності сам
 builder.Services
@@ -71,6 +99,7 @@ app.UseSwaggerUI(o => o.DocumentTitle = "Cinema Reviews API");
 
 app.MapGet("/", () => Results.Redirect("/swagger")).ExcludeFromDescription();
 app.MapControllers();
+app.MapGrpcService<ReviewsGrpcService>();         // Лаб. 06: gRPC-контракт reviews.proto
 app.MapDefaultEndpoints();                        // Лаб. 05: /health (self + mongodb), /alive
 
 app.Run();
