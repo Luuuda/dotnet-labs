@@ -32,7 +32,20 @@ db/p1  db/p2  db/p3        скрипти баз з Лаб. 01 (SQL Server ×2, 
 docs/                      ERD, приклади, скріни Лаб. 05, контрольні питання
 ```
 
-Сервіси не переписувалися: у кожен `Program.cs` додано лише `builder.AddServiceDefaults()`, `app.UseCorrelationId()` і `app.MapDefaultEndpoints()`, а рядки підключення сервіси, як і раніше, читають з `ConnectionStrings:<ім'я>` (Aspire передає їх змінними середовища). Бізнес-логи й власні spans (`ActivitySource`) додано в `BookingService.Bll` (`Cinema.Booking`), `CatalogService.Bll` (`Cinema.Catalog`), `Reviews.Application` (`Cinema.Reviews`, span на кожен запит MediatR) і в Aggregator (`Cinema.Aggregator`).
+### Що змінено в коді сервісів
+
+Бізнес-логіка сервісів не змінювалася. Рядки підключення сервіси, як і раніше, читають через `GetConnectionString("<ім'я>")`, а резервні значення лишилися в `appsettings.json`; Aspire передає справжні змінними середовища `ConnectionStrings__<ім'я>`.
+
+| Де | Що зроблено | Навіщо |
+|---|---|---|
+| `Program.cs` трьох сервісів | `builder.AddServiceDefaults()`, `app.UseCorrelationId()`, `app.MapDefaultEndpoints()`; прибрано власні `UseSerilog`, `UseSerilogRequestLogging` і middleware CorrelationId | інтеграція з платформою; власна конфігурація Serilog і CorrelationId дублювала ServiceDefaults |
+| `appsettings*.json` сервісів | видалено секції `Serilog` | логування налаштовує ServiceDefaults |
+| `*.Api` csproj | посилання на `Platform.ServiceDefaults` замість пакета Serilog | |
+| `BookingService.Bll`, `CatalogService.Bll`, `Reviews.Application` | бізнес-логи з властивостями (`BookingId`, `Status`, `Amount`, `MovieId`, `ScreeningId`, `ReviewId`) і власні spans `ActivitySource` (`Cinema.Booking`, `Cinema.Catalog`, `Cinema.Reviews` — span на кожен запит MediatR) | вимога «логування бізнес-подій і власні spans» |
+| Контролери (`*.Api/Controllers`, `Reviews.WebApi/Controllers`) | лог бізнес-події і теги (`booking.id`, `movie.id`, `review.id`) на span HTTP-запиту для операцій запису | те саме, на рівні API |
+| `Reviews.Infrastructure/Persistence/MongoDbOptions` | гачок `ConfigureClientSettings`, через який `Program.cs` підписує `DiagnosticsActivityEventSubscriber` | MongoDB-spans у trace; клієнт Mongo створюється всередині Infrastructure, тож інакше підписатися неможливо |
+
+Чутливі дані (email, телефон, номер картки) у логи й теги не пишуться.
 
 ## 3. Запуск платформи
 
@@ -71,7 +84,16 @@ AppHost піднімає два контейнери з постійними т�
 ```powershell
 dotnet test Platform.slnx
 ```
-Інтеграційні тести з реальною БД пропускаються, якщо не задано змінні `CATALOG_TEST_DB`, `REVIEWS_TEST_MONGO` (див. README сервісів).
+Інтеграційні й API-тести з реальною БД пропускаються, якщо не задано змінні `CINEMA_TEST_DB`, `CATALOG_TEST_DB`, `REVIEWS_TEST_MONGO` (див. README сервісів). З базами Лаб. 01 (контейнери `cinema-mssql`, `cinema-mongo`) останній прогін: **110 з 110** (Booking 28, Catalog 32, Reviews 50).
+
+### Docker-образи
+
+`Platform.ApiGateway/Dockerfile` і `Services/Catalog/CatalogService.Api/Dockerfile` збираються з кореня репозиторію (потрібні `Directory.Build.props` і `Platform.ServiceDefaults`):
+
+```powershell
+docker build -f Platform.ApiGateway/Dockerfile -t cinema-gateway .
+docker build -f Services/Catalog/CatalogService.Api/Dockerfile -t cinema-catalog-api .
+```
 
 ## 4. Маршрути Gateway
 
@@ -127,6 +149,7 @@ curl -X POST http://localhost:5000/api/bookings -H "Content-Type: application/js
 | Скрін | Що видно |
 |---|---|
 | ![Ресурси](docs/lab05/dashboard-resources.png) | усі ресурси в стані Running |
+| ![Помилок немає](docs/lab05/check-errors-before-stop.png) | Structured logs з рівнем Error після чистого старту (без томів) і всього сценарію: жодного запису |
 | ![Trace агрегувального запиту](docs/lab05/trace-aggregate-booking.png) | один trace: gateway → aggregator → booking/catalog/reviews → SQL і MongoDB; паралельні виклики перекриваються |
 | ![Логи за CorrelationId](docs/lab05/logs-by-correlation-id.png) | Structured logs з фільтром `CorrelationId = demo-aggregate-booking`: записи всіх сервісів одного запиту |
 | ![Часткова відповідь](docs/lab05/trace-partial-failure.png) | reviews-api зупинено: виклики до нього червоні, а запит усе одно 200 |

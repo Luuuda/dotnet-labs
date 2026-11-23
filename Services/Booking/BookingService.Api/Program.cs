@@ -1,8 +1,9 @@
+using System.Diagnostics;
 using System.Reflection;
+using System.Text;
 using BookingService.Api.Infrastructure;
 using BookingService.Bll;
-using System.Text;
-using Serilog;
+using Platform.ServiceDefaults;
 
 Console.OutputEncoding = Encoding.UTF8;   // українські повідомлення в консолі без «кракозябр»
 
@@ -27,8 +28,8 @@ builder.Services.AddControllers();
 // --- Помилки: доменні винятки → HTTP-статуси, формат ProblemDetails (RFC 9457) ----------
 builder.Services.AddProblemDetails(o => o.CustomizeProblemDetails = ctx =>
 {
-    ctx.ProblemDetails.Extensions["traceId"] = ctx.HttpContext.TraceIdentifier;
-    if (ctx.HttpContext.Items[CorrelationIdMiddleware.ItemKey] is string correlationId)
+    ctx.ProblemDetails.Extensions["traceId"] = Activity.Current?.TraceId.ToString() ?? ctx.HttpContext.TraceIdentifier;
+    if (ctx.HttpContext.Items[CorrelationIdMiddleware.ItemKey] is string correlationId)   // CorrelationId з ServiceDefaults
         ctx.ProblemDetails.Extensions["correlationId"] = correlationId;
 });
 builder.Services.AddExceptionHandler<DomainExceptionHandler>();
@@ -45,9 +46,7 @@ builder.Services.AddSwaggerGen(options =>
 
 var app = builder.Build();
 
-app.UseCorrelationId();                         // Лаб. 05: X-Correlation-Id з Gateway (або новий) → LogContext і відповідь
-app.UseMiddleware<CorrelationIdMiddleware>();   // CorrelationId — у кожен запис логу цього запиту
-app.UseSerilogRequestLogging();                 // один рядок на запит з ФІНАЛЬНИМ статусом (після обробника)
+app.UseCorrelationId();                         // Лаб. 05: X-Correlation-Id з Gateway (або новий) → LogContext, відповідь, лог початку/кінця запиту
 app.UseExceptionHandler();                      // доменні винятки → 404 / 409 / 400 (DomainExceptionHandler)
 app.UseStatusCodePages();                       // порожні 4xx/5xx теж повертаються як ProblemDetails
 

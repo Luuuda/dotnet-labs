@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using CatalogService.Api.Infrastructure;
 using CatalogService.Bll.Dtos;
 using CatalogService.Bll.Services;
@@ -10,7 +11,7 @@ namespace CatalogService.Api.Controllers;
 [ApiController]
 [Route("api/movies")]
 [Produces("application/json")]
-public sealed class MoviesController(IMovieService movies) : ApiControllerBase
+public sealed class MoviesController(IMovieService movies, ILogger<MoviesController> logger) : ApiControllerBase
 {
     /// <summary>
     /// Список фільмів з пагінацією, фільтрацією та сортуванням (виконується в SQL: WHERE / ORDER BY / OFFSET-FETCH).
@@ -45,6 +46,8 @@ public sealed class MoviesController(IMovieService movies) : ApiControllerBase
     {
         if (!await IsValidAsync(validator, input, ct)) return ValidationProblem(ModelState);
         var created = await movies.CreateAsync(input, ct);
+        Activity.Current?.SetTag("movie.id", created.Id);
+        logger.LogInformation("API: фільм {MovieId} «{Title}» додано до каталогу", created.Id, created.Title);
         return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
     }
 
@@ -69,6 +72,8 @@ public sealed class MoviesController(IMovieService movies) : ApiControllerBase
     public async Task<IActionResult> Delete(int id, CancellationToken ct)
     {
         await movies.DeleteAsync(id, ct);
+        Activity.Current?.SetTag("movie.id", id);
+        logger.LogInformation("API: фільм {MovieId} знято з каталогу", id);
         return NoContent();
     }
 

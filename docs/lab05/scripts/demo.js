@@ -78,6 +78,7 @@ function listenPort(exe) {
   const f = encodeURIComponent('CorrelationId:equals:demo-aggregate-booking');
   await shot(`/structuredlogs?filters=${f}`, 'logs-by-correlation-id.png', 7000);
   await shot('/traces', 'traces-list.png');
+  await shot('/structuredlogs?logLevel=error', 'check-errors-before-stop.png');   // перевірка: помилок старту немає
 
   // ---------- 4. Часткова відмова: зупиняємо reviews-api ----------
   try { execSync('taskkill /IM Reviews.WebApi.exe /F'); console.log('reviews-api stopped'); } catch (e) { console.log('taskkill: ' + e.message); }

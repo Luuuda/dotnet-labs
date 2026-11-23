@@ -1,8 +1,8 @@
 {
   "booking": {
-    "id": 7,
+    "id": 6,
     "status": "Paid",
-    "createdAt": "2026-11-23T17:34:56.143",
+    "createdAt": "2026-11-23T17:54:31.531",
     "totalAmount": 320,
     "ticketsCount": 2,
     "contactEmail": "andrii.shevchuk@example.com",
@@ -15,8 +15,8 @@
       "startsAt": "2026-12-05T19:30:00",
       "hallName": "Зала 1",
       "seats": [
-        "ряд 7, місце 4",
-        "ряд 7, місце 5"
+        "ряд 8, місце 6",
+        "ряд 8, місце 7"
       ],
       "paidAmount": 320,
       "live": {
@@ -44,7 +44,7 @@
     }
   ],
   "warnings": [
-    "reviews-api is unavailable: відгуки на фільм 3 — дані цього сервісу відсутні у відповіді",
-    "reviews-api is unavailable: рейтинг фільму 3 — дані цього сервісу відсутні у відповіді"
+    "reviews-api is unavailable: рейтинг фільму 3 — дані цього сервісу відсутні у відповіді",
+    "reviews-api is unavailable: відгуки на фільм 3 — дані цього сервісу відсутні у відповіді"
   ]
 }
