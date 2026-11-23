@@ -1,0 +1,55 @@
+// Контракт gRPC сервісу відгуків (Лаб. 06). Сервер — Reviews.WebApi, клієнт — Platform.Aggregator.
+// Номери полів після публікації НЕ змінюються.
+syntax = "proto3";
+
+option csharp_namespace = "Reviews.Grpc";
+
+package cinema.reviews.v1;
+
+import "google/protobuf/timestamp.proto";
+
+// Читання рейтингів і відгуків для внутрішніх сервісів. Методи виконують ті самі запити MediatR (з CachingBehavior).
+service ReviewsGrpc {
+  // Рейтинг фільму. Немає відгуків → NOT_FOUND, movie_id <= 0 → INVALID_ARGUMENT.
+  rpc GetMovieRating (GetMovieRatingRequest) returns (MovieRatingReply);
+  // Найкращі відгуки фільму (за оцінкою).
+  rpc GetTopReviews (GetTopReviewsRequest) returns (ReviewsReply);
+  // Рейтинги кількох фільмів одним викликом; фільми без відгуків пропускаються.
+  rpc GetRatingsForMovies (GetRatingsForMoviesRequest) returns (MovieRatingsReply);
+}
+
+message GetMovieRatingRequest { int32 movie_id = 1; }
+
+message GetTopReviewsRequest {
+  int32 movie_id = 1;
+  int32 limit = 2;                         // 1..20, 0 → 3
+}
+
+message GetRatingsForMoviesRequest { repeated int32 movie_ids = 1; }
+
+message MovieRatingReply {
+  int32 movie_id = 1;
+  string movie_title = 2;
+  double average = 3;
+  int32 count = 4;
+  map<int32, int32> distribution = 5;      // оцінка (1..5) → кількість відгуків
+  int32 verified_count = 6;
+}
+
+message MovieRatingsReply { repeated MovieRatingReply ratings = 1; }
+
+message ReviewReply {
+  string id = 1;                           // ObjectId MongoDB
+  int32 movie_id = 2;
+  string author_name = 3;
+  int32 rating = 4;
+  optional string text = 5;
+  bool verified_viewer = 6;
+  int32 comments_count = 7;
+  google.protobuf.Timestamp created_at = 8;
+}
+
+message ReviewsReply {
+  repeated ReviewReply reviews = 1;
+  int64 total_count = 2;
+}

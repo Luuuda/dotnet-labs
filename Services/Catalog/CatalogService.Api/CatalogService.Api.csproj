@@ -10,6 +10,14 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="Swashbuckle.AspNetCore" Version="8.1.*" />
+    <!-- Лаб. 06: gRPC-сервер, кеш у пам'яті (L1) і Redis (L2) через Aspire-інтеграцію -->
+    <PackageReference Include="Grpc.AspNetCore" Version="2.71.0" />
+    <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="9.0.*" />
+    <PackageReference Include="Aspire.StackExchange.Redis.DistributedCaching" Version="9.4.2" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Контракт gRPC: тут генерується серверна частина; Aggregator підключає той самий файл з GrpcServices="Client" -->
+    <Protobuf Include="Protos\catalog.proto" GrpcServices="Server" />
   </ItemGroup>
   <ItemGroup>
     <!-- Лаб. 05: спільні налаштування платформи (логування, трасування, health checks) -->
