@@ -14,6 +14,8 @@ public sealed class LoggingBehavior<TRequest, TResponse>(ILogger<LoggingBehavior
     public async Task<TResponse> Handle(TRequest request, RequestHandlerDelegate<TResponse> next, CancellationToken ct)
     {
         var name = typeof(TRequest).Name;
+        using var activity = ReviewsTelemetry.Source.StartActivity($"MediatR {name}");    // Лаб. 05: span на кожен запит
+        activity?.SetTag("mediatr.request", name);
         logger.LogInformation("MediatR → {RequestName} отримано {@Request}", name, request);
         var sw = Stopwatch.StartNew();
         try
@@ -25,6 +27,7 @@ public sealed class LoggingBehavior<TRequest, TResponse>(ILogger<LoggingBehavior
         }
         catch (Exception ex)
         {
+            activity?.SetStatus(ActivityStatusCode.Error, ex.GetType().Name);
             logger.LogInformation("MediatR ✗ {RequestName} завершено з {ExceptionType} за {ElapsedMs} мс",
                 name, ex.GetType().Name, sw.ElapsedMilliseconds);
             throw;

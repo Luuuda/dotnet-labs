@@ -1,5 +1,7 @@
 # Лаб. 03 — Тришарова архітектура на Entity Framework Core
 
+> **Лаб. 05:** сервіс перенесено в `Services/Catalog/` і запускається разом з платформою через `Platform.AppHost` (див. [README в корені](../../README.md)). Команди й шляхи нижче (окрема папка, `verify.cmd`) описують самостійний запуск з Лаб. 03, гілка `lab-03`.
+
 Мікросервіс **каталогу фільмів і розкладу** кінотеатру на базі **Проєкту №2 з Лаб. 01** (`CinemaCatalog`), переписаний на **EF Core 9 (Code-First)**:
 
 **Domain** (сутності з бізнес-методами) → **DAL** (DbContext, Fluent API, міграції, Generic Repository, Unit of Work) → **BLL** (сервіси, DTO, AutoMapper, FluentValidation, специфікації Ardalis) → **API** (контролери, ProblemDetails, Serilog, Swagger).

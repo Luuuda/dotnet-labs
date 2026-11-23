@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using AutoMapper;
 using FluentValidation;
 using MediatR;
@@ -60,8 +61,11 @@ public sealed class CreateReviewCommandHandler(IReviewRepository reviews, IMappe
             cmd.Aspects is { Count: > 0 } aspects ? new ReviewAspects(aspects) : null,
             cmd.VerifiedViewer);
 
+        Activity.Current?.SetTag("review.movie_id", cmd.MovieId);
+        Activity.Current?.SetTag("review.rating", cmd.Rating);
         await reviews.AddAsync(review, ct);   // унікальний індекс (movieId, author.userId) — страховка від гонки
-        logger.LogInformation("Створено відгук {ReviewId} на фільм {MovieId} від {UserId}", review.Id, review.MovieId, review.Author.UserId);
+        logger.LogInformation("Створено відгук {ReviewId} на фільм {MovieId} від {UserId}: оцінка {Rating}, перевірений глядач {VerifiedViewer}",
+            review.Id, review.MovieId, review.Author.UserId, review.Rating.Value, review.VerifiedViewer);
         return mapper.Map<ReviewDetailsDto>(review);
     }
 }

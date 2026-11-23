@@ -25,6 +25,9 @@ public sealed class ScreeningService(IUnitOfWork uow, IMapper mapper, ILogger<Sc
 
     public async Task<ScreeningDto> CreateAsync(CreateScreeningDto input, CancellationToken ct)
     {
+        using var activity = CatalogTelemetry.Source.StartActivity("ScheduleScreening");
+        activity?.SetTag("movie.id", input.MovieId);
+        activity?.SetTag("hall.id", input.HallId);
         var movie = await uow.Movies.GetByIdAsync(input.MovieId, ct)
                     ?? throw new ValidationException("movieId", $"Фільм {input.MovieId} не знайдено");
         var hall = await uow.Halls.GetByIdAsync(input.HallId, ct)
@@ -39,12 +42,17 @@ public sealed class ScreeningService(IUnitOfWork uow, IMapper mapper, ILogger<Sc
 
         await uow.Screenings.AddAsync(screening, ct);
         await uow.SaveChangesAsync(ct);
-        logger.LogInformation("Заплановано сеанс {ScreeningId}: фільм {MovieId}, зала {HallId}", screening.Id, movie.Id, hall.Id);
+        activity?.SetTag("screening.id", screening.Id);
+        logger.LogInformation("Заплановано сеанс {ScreeningId}: фільм {MovieId}, зала {HallId}, {StartsAt}, ціна {Price}",
+            screening.Id, movie.Id, hall.Id, screening.StartsAt, screening.BasePrice);
         return await GetByIdAsync(screening.Id, ct);
     }
 
     public async Task<ScreeningDto> ChangePriceAsync(long id, ChangePriceDto input, CancellationToken ct)
     {
+        using var activity = CatalogTelemetry.Source.StartActivity("ChangeScreeningPrice");
+        activity?.SetTag("screening.id", id);
+        activity?.SetTag("screening.price", input.BasePrice);
         var screening = await uow.Screenings.GetByIdAsync(id, ct) ?? throw EntityNotFoundException.For<Screening>(id);
         screening.ChangePrice(input.BasePrice);                 // скасований сеанс → DomainException → 409
         await uow.SaveChangesAsync(ct);
@@ -54,9 +62,11 @@ public sealed class ScreeningService(IUnitOfWork uow, IMapper mapper, ILogger<Sc
 
     public async Task CancelAsync(long id, CancellationToken ct)
     {
+        using var activity = CatalogTelemetry.Source.StartActivity("CancelScreening");
+        activity?.SetTag("screening.id", id);
         var screening = await uow.Screenings.GetByIdAsync(id, ct) ?? throw EntityNotFoundException.For<Screening>(id);
         screening.Cancel();                                     // повторне скасування → DomainException → 409
         await uow.SaveChangesAsync(ct);
-        logger.LogInformation("Сеанс {ScreeningId} скасовано", id);
+        logger.LogInformation("Сеанс {ScreeningId} скасовано, статус {Status}", id, "Cancelled");
     }
 }

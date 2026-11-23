@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using MongoDB.Driver;
 
 namespace Reviews.Infrastructure.Persistence;
 
@@ -9,4 +10,7 @@ public sealed class MongoDbOptions
 
     [Required] public string ConnectionString { get; set; } = "";
     [Required] public string DatabaseName { get; set; } = "";
+
+    /// <summary>Додаткове налаштування клієнта (Лаб. 05: підписка на трасування задається у WebApi).</summary>
+    public Action<MongoClientSettings>? ConfigureClientSettings { get; set; }
 }

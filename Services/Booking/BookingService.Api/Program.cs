@@ -8,6 +8,8 @@ Console.OutputEncoding = Encoding.UTF8;   // українські повідом
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.AddServiceDefaults();   // Лаб. 05: Serilog, OpenTelemetry, health checks, service discovery (Platform.ServiceDefaults)
+
 // --- Крок A: конфігурація -------------------------------------------------------------
 // Рядок підключення — в appsettings.json; перевизначається змінною оточення
 // ConnectionStrings__CinemaBookingDb (саме так його передає .NET Aspire).
@@ -15,14 +17,6 @@ var connectionString = builder.Configuration.GetConnectionString("CinemaBookingD
     ?? throw new InvalidOperationException("Connection string 'CinemaBookingDb' is missing");
 var commandTimeout = builder.Configuration.GetValue("Database:CommandTimeoutSeconds", 30);
 var autoMapperKey = builder.Configuration["AutoMapper:LicenseKey"];
-
-// Логування — Serilog; CorrelationId додається в кожен запис (див. CorrelationIdMiddleware)
-builder.Host.UseSerilog((ctx, services, cfg) => cfg
-    .ReadFrom.Configuration(ctx.Configuration)
-    .ReadFrom.Services(services)
-    .Enrich.FromLogContext()
-    .WriteTo.Console(outputTemplate:
-        "[{Timestamp:HH:mm:ss} {Level:u3}] ({CorrelationId}) {SourceContext}: {Message:lj}{NewLine}{Exception}"));
 
 // --- DI: BLL (а під ним DAL з Unit of Work — Scoped, одне з'єднання на запит) -----------
 builder.Services.AddBusinessLogicLayer(connectionString, commandTimeout,
@@ -51,6 +45,7 @@ builder.Services.AddSwaggerGen(options =>
 
 var app = builder.Build();
 
+app.UseCorrelationId();                         // Лаб. 05: X-Correlation-Id з Gateway (або новий) → LogContext і відповідь
 app.UseMiddleware<CorrelationIdMiddleware>();   // CorrelationId — у кожен запис логу цього запиту
 app.UseSerilogRequestLogging();                 // один рядок на запит з ФІНАЛЬНИМ статусом (після обробника)
 app.UseExceptionHandler();                      // доменні винятки → 404 / 409 / 400 (DomainExceptionHandler)
@@ -67,6 +62,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.MapGet("/", () => Results.Redirect("/swagger")).ExcludeFromDescription();
+app.MapDefaultEndpoints();                      // Лаб. 05: /health, /alive
 app.MapControllers();
 
 app.Run();
