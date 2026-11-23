@@ -28,6 +28,16 @@ public static class Extensions
     /// <summary>Джерела власних spans бізнес-операцій: Cinema.Booking, Cinema.Catalog, Cinema.Reviews, Cinema.Aggregator…</summary>
     public const string BusinessActivitySources = "Cinema.*";
 
+    /// <summary>
+    /// Лаб. 06: Meter-и метрик кешу (лічильники cache.hits / cache.misses з тегом cache.level = L1 | L2).
+    /// Кожен сервіс створює свій Meter через IMeterFactory у папці Caching/; тут вони підключаються до експорту OTLP.
+    /// </summary>
+    public static readonly string[] CacheMeters =
+        ["Cinema.Catalog.Cache", "Cinema.Booking.Cache", "Cinema.Reviews.Cache", "Cinema.Aggregator.Cache"];
+
+    /// <summary>Вбудовані метрики gRPC (тривалість і кількість викликів сервера та клієнта).</summary>
+    public static readonly string[] GrpcMeters = ["Grpc.AspNetCore.Server", "Grpc.Net.Client"];
+
     /// <summary>ActivitySource драйвера MongoDB (пакет MongoDB.Driver.Core.Extensions.DiagnosticSources).</summary>
     public const string MongoActivitySource = "MongoDB.Driver.Core.Extensions.DiagnosticSources";
 
@@ -36,6 +46,7 @@ public static class Extensions
         builder.ConfigureSerilog();
         builder.ConfigureOpenTelemetry();
         builder.AddDefaultHealthChecks();
+        builder.Services.AddHostedService<Platform.ServiceDefaults.DistributedCacheWarmup>();   // Лаб. 06: з'єднання з Redis — на старті
 
         builder.Services.AddServiceDiscovery();
         builder.Services.AddHttpContextAccessor();
@@ -118,7 +129,9 @@ public static class Extensions
                 .AddAspNetCoreInstrumentation()
                 .AddHttpClientInstrumentation()
                 .AddRuntimeInstrumentation()
-                .AddMeter(BusinessActivitySources))
+                .AddMeter(BusinessActivitySources)
+                .AddMeter(CacheMeters)                       // Лаб. 06: метрики попадань / промахів кешу
+                .AddMeter(GrpcMeters))
             .WithTracing(tracing => tracing
                 .SetSampler(new ParentBasedSampler(new TraceIdRatioBasedSampler(samplingRatio)))
                 .AddSource(builder.Environment.ApplicationName)

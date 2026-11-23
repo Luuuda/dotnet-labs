@@ -11,6 +11,10 @@
     <!-- service discovery і стійкість HttpClient (як у шаблоні aspire-servicedefaults) -->
     <PackageReference Include="Microsoft.Extensions.Http.Resilience" Version="9.7.0" />
     <PackageReference Include="Microsoft.Extensions.ServiceDiscovery" Version="9.4.0" />
+    <!-- Лаб. 06: серверний interceptor логування gRPC-викликів, спільний для всіх сервісів -->
+    <PackageReference Include="Grpc.AspNetCore.Server" Version="2.71.0" />
+    <!-- Лаб. 06: розширення ConfigurationOptions для клієнта Redis (127.0.0.1 замість localhost) -->
+    <PackageReference Include="StackExchange.Redis" Version="2.*" />
     <!-- OpenTelemetry: трасування, метрики, експорт OTLP в Aspire Dashboard -->
     <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.15.3" />
     <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.15.3" />
