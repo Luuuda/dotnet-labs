@@ -1,0 +1,74 @@
+{
+  "booking": {
+    "id": 6,
+    "status": "Paid",
+    "createdAt": "2026-11-23T17:54:31.531",
+    "totalAmount": 320,
+    "ticketsCount": 2,
+    "contactEmail": "andrii.shevchuk@example.com",
+    "channel": "Web"
+  },
+  "sessions": [
+    {
+      "screeningId": 2,
+      "movieTitle": "Дюна: Частина друга",
+      "startsAt": "2026-12-05T19:30:00",
+      "hallName": "Зала 1",
+      "seats": [
+        "ряд 8, місце 6",
+        "ряд 8, місце 7"
+      ],
+      "paidAmount": 320,
+      "live": {
+        "format": "2D",
+        "language": "українська",
+        "currentPrice": 160,
+        "isCancelled": false,
+        "endsAt": "2026-12-05T22:31:00"
+      },
+      "movie": {
+        "id": 3,
+        "title": "Дюна: Частина друга",
+        "originalTitle": "Dune: Part Two",
+        "releaseYear": 2024,
+        "durationMinutes": 166,
+        "ageRating": "12+",
+        "director": "Дені Вільнев",
+        "description": "Пол Атрід об'єднується з фрименами, щоб помститися за свою родину.",
+        "genres": [
+          "Фантастика",
+          "Драма",
+          "Пригоди"
+        ]
+      },
+      "opinion": {
+        "averageRating": 4.33,
+        "reviewsCount": 3,
+        "topReviews": [
+          {
+            "author": "Олена Коваленко",
+            "rating": 5,
+            "text": "Найкраще, що я бачила в IMAX. Масштаб, звук, кожен кадр — як картина.",
+            "verifiedViewer": true,
+            "createdAt": "2026-11-23T17:53:42.701Z"
+          },
+          {
+            "author": "Марія Бондар",
+            "rating": 4,
+            "text": "Саундтрек і візуал — окреме задоволення.",
+            "verifiedViewer": true,
+            "createdAt": "2026-11-23T17:53:42.704Z"
+          },
+          {
+            "author": "Андрій Шевчук",
+            "rating": 4,
+            "text": "Фінал трохи поспішний, але дуель — топ.",
+            "verifiedViewer": false,
+            "createdAt": "2026-11-23T17:53:42.704Z"
+          }
+        ]
+      }
+    }
+  ],
+  "warnings": []
+}

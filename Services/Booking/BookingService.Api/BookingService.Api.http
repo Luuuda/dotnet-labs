@@ -1,0 +1,58 @@
+### Запити до API (Rider / VS Code REST Client). Адреса — з Aspire Dashboard або http://localhost:5180
+@api = http://localhost:5180
+@customer = 6f1c2a10-0000-4000-8000-000000000004
+
+### Сеанси (локальна копія Каталогу)
+GET {{api}}/api/screenings
+
+### Карта зали сеансу #7
+GET {{api}}/api/screenings/7/seats
+
+### Створити клієнта зі спецсимволом в імені (O'Brien) → 201 + Location
+POST {{api}}/api/customers
+Content-Type: application/json
+
+{ "email": "sean.obrien@example.com", "fullName": "Seán O'Brien", "phone": "+353861234567" }
+
+### Невалідний DTO → 400 ValidationProblemDetails
+POST {{api}}/api/customers
+Content-Type: application/json
+
+{ "email": "not-an-email", "fullName": "X" }
+
+### Створити бронювання (транзакція: Bookings + BookingDetails + Tickets + History) → 201
+POST {{api}}/api/bookings
+Content-Type: application/json
+
+{ "customerId": "{{customer}}", "screeningId": 7, "seats": [ { "row": 3, "seat": 5 }, { "row": 3, "seat": 6 } ], "promoCode": "STUDENT20", "channel": "Web" }
+
+### Бронювання за Id (підставте Id з попередньої відповіді)
+GET {{api}}/api/bookings/6
+
+### Неіснуючий Id → 404 ProblemDetails (не 500)
+GET {{api}}/api/bookings/999999
+
+### Оплатити НЕпідтверджене бронювання → 409, і оплата відкочується разом з невдалою зміною статусу
+POST {{api}}/api/bookings/6/pay
+Content-Type: application/json
+
+{ "amount": 400.00, "provider": "Card" }
+
+### Підтвердити місця → 204
+POST {{api}}/api/bookings/6/confirm
+
+### Підтвердити вдруге → 409 ProblemDetails (THROW 50002 з процедури Лаб. 01)
+POST {{api}}/api/bookings/6/confirm
+
+### Оплатити (Idempotency-Key: повтор того самого запиту поверне ту саму оплату з 200)
+POST {{api}}/api/bookings/6/pay
+Content-Type: application/json
+Idempotency-Key: TX-DEMO-0001
+
+{ "amount": 400.00, "provider": "Card" }
+
+### Видати квитки → 204
+POST {{api}}/api/bookings/6/issue
+
+### Бронювання клієнта з фільтром і пагінацією
+GET {{api}}/api/customers/{{customer}}/bookings?status=Issued&page=1&pageSize=5
