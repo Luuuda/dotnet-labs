@@ -4,8 +4,9 @@
 Лабораторна робота № 5: мікросервісна платформа з YARP Gateway, Aggregator і OpenTelemetry.
 Лабораторна робота № 6: gRPC-виклики та дворівневе кешування (Memory + Redis) — **розділ [7](#7-лаб-06-grpc-і-дворівневе-кешування)**.
 Лабораторна робота № 7: резильєнтність (Polly), бізнес-метрики та health checks — **розділ [8](#8-лаб-07-резильєнтність-бізнес-метрики-та-health-checks)**.
+Лабораторна робота № 8: подієва архітектура з RabbitMQ — **розділ [9](#9-лаб-08-подієва-архітектура-з-rabbitmq)**.
 
-Кожна лабораторна робота лежить в окремій гілці від `main`: `lab-01` … `lab-07`. Гілка `lab-07` продовжує `lab-06`, а та — `lab-05`: три сервіси з попередніх лаб зібрано в одне рішення `Platform.slnx` і запущено разом через Aspire AppHost.
+Кожна лабораторна робота лежить в окремій гілці від `main`: `lab-01` … `lab-08`. Гілка `lab-08` продовжує `lab-07`, `lab-07` — `lab-06`, а та — `lab-05`: три сервіси з попередніх лаб зібрано в одне рішення `Platform.slnx` і запущено разом через Aspire AppHost.
 
 ## 1. Предметна область
 
@@ -18,6 +19,7 @@
 | `reviews-api` — [Services/Reviews](Services/Reviews) | Лаб. 04 | MongoDB.Driver, Clean Architecture + MediatR | MongoDB `cinema_reviews` (`ReviewsDb`) | відгуки, коментарі, рейтинг фільму, обговорення |
 | `aggregator` — [Platform.Aggregator](Platform.Aggregator) | Лаб. 05–06 | gRPC-клієнти (Лаб. 06), Task.WhenAll, Redis | — | композитні відповіді з трьох сервісів |
 | `redis` | Лаб. 06 | Redis (контейнер Aspire, том) | `ConnectionStrings:redis` | L2 дворівневого кешу сервісів, кеш агрегованих відповідей |
+| `messaging` | Лаб. 08 | RabbitMQ (контейнер Aspire, том, Management UI `http://localhost:15672`) | `ConnectionStrings:messaging` | інтеграційні події Каталогу → копії в Бронюванні й Відгуках |
 | `gateway` — [Platform.ApiGateway](Platform.ApiGateway) | Лаб. 05 | YARP + service discovery | — | єдина точка входу `http://localhost:5000` |
 
 ## 2. Структура рішення
@@ -30,9 +32,11 @@ Platform.ServiceDefaults/  Extensions.cs — Serilog, OpenTelemetry, health chec
 Platform.ApiGateway/       YARP: маршрути в appsettings.json, логування маршрутизації
 Platform.Aggregator/       Clients/ (HTTP- і gRPC-клієнти), Services/ (агрегація, часткові відмови), Controllers/,
                            Resilience/ (політики стійкості), Metrics/, HealthChecks/ (Лаб. 07)
-Services/Booking/          BookingService.Api (Protos/, Grpc/, Metrics/, HealthChecks/) | Bll | Dal | Domain | Tests
-Services/Catalog/          CatalogService.Api (Protos/, Grpc/, Metrics/, HealthChecks/) | Bll | Dal | Domain | Tests
-Services/Reviews/          Reviews.Domain | Application | Infrastructure | WebApi (Protos/, Grpc/, Metrics/, HealthChecks/) | Tests
+Platform.Messaging/        Лаб. 08: IntegrationEvent, IEventPublisher + RabbitMqEventPublisher, EventTopology (exchange, черги, DLX/DLQ),
+                           IntegrationEventConsumer (ack / retry / DLQ), TracePropagation (W3C traceparent), метрики
+Services/Booking/          BookingService.Api (Protos/, Grpc/, Metrics/, HealthChecks/, Messaging/) | Bll (IntegrationEvents/) | Dal | Domain | Tests
+Services/Catalog/          CatalogService.Api (Protos/, Grpc/, Metrics/, HealthChecks/) | Bll (IntegrationEvents/) | Dal | Domain | Tests
+Services/Reviews/          Reviews.Domain | Application | Infrastructure | WebApi (Protos/, Grpc/, Metrics/, HealthChecks/, IntegrationEvents/, Messaging/) | Tests
 db/p1  db/p2  db/p3        скрипти баз з Лаб. 01 (SQL Server ×2, MongoDB)
 docs/                      ERD, приклади, скріни Лаб. 05, контрольні питання
 ```
@@ -59,6 +63,7 @@ docs/                      ERD, приклади, скріни Лаб. 05, ко�
 ```powershell
 # один раз: пароль SQL Server — параметр-секрет AppHost (не зберігається в репозиторії)
 dotnet user-secrets set "Parameters:sql-password" "<ваш-пароль>" --project Platform.AppHost
+# пароль RabbitMQ (Parameters:messaging-password) Aspire генерує сам і зберігає в тих самих user secrets
 
 dotnet build Platform.slnx
 dotnet run --project Platform.AppHost --launch-profile http
@@ -72,8 +77,9 @@ dotnet run --project Platform.AppHost --launch-profile http
 | **API Gateway — єдина точка входу** | **http://localhost:5000** (список маршрутів: `GET /`) |
 | Swagger сервісів (напряму, для налагодження) | booking `:5180`, catalog `:5280`, reviews `:5380`, aggregator `:5400` |
 | gRPC сервісів (лише HTTP/2, для Aggregator) | booking `:5181`, catalog `:5281`, reviews `:5381` |
+| RabbitMQ Management UI (Лаб. 08) | http://localhost:15672 — користувач `guest`, пароль: `dotnet user-secrets list --project Platform.AppHost` → `Parameters:messaging-password` |
 
-Порядок старту задано `WaitFor`: контейнери SQL Server, MongoDB і Redis → `booking-api`, `catalog-api`, `reviews-api` → `aggregator` → `gateway`.
+Порядок старту задано `WaitFor`: контейнери SQL Server, MongoDB, Redis і RabbitMQ → `booking-api`, `catalog-api`, `reviews-api` → `aggregator` → `gateway`.
 
 ### Як розгортаються бази
 
@@ -82,6 +88,7 @@ AppHost піднімає два контейнери з постійними т�
 * `CinemaBooking` — `booking-api` на старті виконує скрипти з [db/p1](db/p1) (`schema.sql` → `procedures.sql` → `seed.sql`, вбудовані ресурси Dal, ідемпотентні);
 * `CinemaCatalog` — `catalog-api` застосовує міграції EF Core і програмний сідінг;
 * `cinema_reviews` — `reviews-api` створює індекси й засіває колекції (`IHostedService`).
+* Лаб. 08: у базі CinemaBooking, створеній раніше, `booking-api` на старті доповнює схему пакетами `schema.sql` з позначкою «Лаб. 08 (оновлення схеми)» — таблиця `dbo.ProcessedEvents`, стовпці `PriceSyncedAt` / `TitleSyncedAt`; у `cinema_reviews` `reviews-api` створює TTL-індекс колекції `processedEvents`.
 
 Окремо від Aspire бази можна розгорнути скриптом Лаб. 01: `db/deploy.ps1 -Tests` (або `db/run-deploy-tests.cmd`) — він піднімає `db/docker-compose.yml` і виконує `db/init.sql`, `db/p1/*`, `db/p2/*`, `db/p3/*`.
 
@@ -90,7 +97,7 @@ AppHost піднімає два контейнери з постійними т�
 ```powershell
 dotnet test Platform.slnx
 ```
-Інтеграційні й API-тести з реальною БД пропускаються, якщо не задано змінні `CINEMA_TEST_DB`, `CATALOG_TEST_DB`, `REVIEWS_TEST_MONGO` (див. README сервісів). З базами Лаб. 01 (контейнери `cinema-mssql`, `cinema-mongo`) останній прогін: **110 з 110** (Booking 28, Catalog 32, Reviews 50).
+Інтеграційні й API-тести з реальною БД пропускаються, якщо не задано змінні `CINEMA_TEST_DB`, `CATALOG_TEST_DB`, `REVIEWS_TEST_MONGO` (див. README сервісів). З базами Лаб. 01 (контейнери `cinema-mssql`, `cinema-mongo`) останній прогін: **151 з 151** (Booking 42, Catalog 49, Reviews 60).
 
 ### Docker-образи
 
@@ -372,23 +379,110 @@ Aggregator залежить від трьох сервісів різної кр
 
 Відповіді на контрольні питання — [docs/lab07-control-questions.md](docs/lab07-control-questions.md).
 
-## 9. Політика дублювання даних
+## 9. Лаб. 08: подієва архітектура з RabbitMQ
+
+Каталог (власник фільмів і розкладу) публікує інтеграційні події, Бронювання і Відгуки оновлюють свої копії за політикою дублювання з Лаб. 01 (розділ [10](#10-політика-дублювання-даних)). Відповідність термінам завдання: «Products у базі Замовлень» — копія сеансів `dbo.Screenings` у CinemaBooking (orders-api = `booking-api`), «productName у Відгуках» — `movieTitle` у колекціях `reviews` і `discussions`, `ProductPriceChanged` — `ScreeningPriceChangedEvent`, `ProductRenamed` — `MovieRenamedEvent`.
+
+```
+catalog-api ──PublishAsync після SaveChanges──► catalog-events (topic, durable)
+                                                   │ screening.* , movie.*            │ movie.*
+                                                   ▼                                  ▼
+                                      booking.catalog-sync                 reviews.catalog-sync        (durable, x-dead-letter-exchange)
+                                       │ BackgroundService                   │ BackgroundService
+                                       ▼                                     ▼
+                     dbo.ProcessedEvents + dbo.Screenings (1 транзакція)   processedEvents + updateMany reviews / discussions
+               nack / ліміт повторів ─► catalog-events.dlx (direct) ─► booking.catalog-sync.dlq | reviews.catalog-sync.dlq
+```
+
+### 9.1. Де що лежить
+
+| Що | Де |
+|---|---|
+| RabbitMQ в AppHost: `AddRabbitMQ("messaging").WithDataVolume(...).WithManagementPlugin(port: 15672)`, `WithReference(messaging).WaitFor(messaging)` для catalog-api, booking-api, reviews-api | [Platform.AppHost/AppHost.cs](Platform.AppHost/AppHost.cs) |
+| Підключення `builder.AddRabbitMQClient("messaging")` (Aspire.RabbitMQ.Client 13.6.5 → RabbitMQ.Client 7.x: `IConnection` singleton, health check `RabbitMQ.Client` у `/health/ready` зі статусом Degraded) | `Program.cs` сервісів: [Catalog](Services/Catalog/CatalogService.Api/Program.cs), [Booking](Services/Booking/BookingService.Api/Program.cs), [Reviews](Services/Reviews/Reviews.WebApi/Program.cs); [MessagingHealthChecks.cs](Platform.Messaging/MessagingHealthChecks.cs) |
+| Спільна інфраструктура обміну повідомленнями | [Platform.Messaging](Platform.Messaging) |
+| Базовий record події (`EventId`, `OccurredAt`, `CorrelationId`, `SchemaVersion`) | [Platform.Messaging/IntegrationEvent.cs](Platform.Messaging/IntegrationEvent.cs) |
+| `IEventPublisher` → `RabbitMqEventPublisher`: JSON camelCase, `Persistent`, `ContentType`, `MessageId = EventId`, `Type`, заголовок `x-correlation-id`, publisher confirms, лог публікації | [IEventPublisher.cs](Platform.Messaging/IEventPublisher.cs), [RabbitMqEventPublisher.cs](Platform.Messaging/RabbitMqEventPublisher.cs), [MessagingJson.cs](Platform.Messaging/MessagingJson.cs) |
+| Декларативна топологія: topic exchange, черга на сервіс, bindings, `x-dead-letter-exchange`, DLQ прив'язана до DLX | [Platform.Messaging/EventTopology.cs](Platform.Messaging/EventTopology.cs) |
+| Базовий споживач: `HandleDeliveryAsync` (ack / retry з `x-retry-count` / nack у DLQ), моніторинг глибини DLQ | [Platform.Messaging/IntegrationEventConsumer.cs](Platform.Messaging/IntegrationEventConsumer.cs) |
+| Передача контексту трасування: Inject / Extract W3C `traceparent`, Activity `Producer` / `Consumer` з тегами `messaging.*` | [Platform.Messaging/TracePropagation.cs](Platform.Messaging/TracePropagation.cs); `.AddSource("Platform.Messaging")`, `.AddMeter("Platform.Messaging")` — [Platform.ServiceDefaults/Extensions.cs](Platform.ServiceDefaults/Extensions.cs); CorrelationId у Baggage — [CorrelationId.cs](Platform.ServiceDefaults/CorrelationId.cs) |
+| Події Каталогу (exchange, routing keys, record-и в минулому часі) | [CatalogService.Bll/IntegrationEvents](Services/Catalog/CatalogService.Bll/IntegrationEvents) |
+| Публікація після `SaveChangesAsync` | [ScreeningService.cs](Services/Catalog/CatalogService.Bll/Services/ScreeningService.cs) (`CreateAsync`, `ChangePriceAsync`, `CancelAsync`), [MovieService.cs](Services/Catalog/CatalogService.Bll/Services/MovieService.cs) (`UpdateAsync` → `MovieRenamedEvent`) |
+| Споживач Бронювання (`BackgroundService`: канал, топологія, `BasicQos(10)`, `AsyncEventingBasicConsumer`, `BasicConsumeAsync(autoAck: false)`, `stoppingToken`) | [BookingService.Api/Messaging/CatalogEventsConsumer.cs](Services/Booking/BookingService.Api/Messaging/CatalogEventsConsumer.cs) |
+| Обробники Бронювання — по одному на тип події, `ProcessedEvents` у тій самій транзакції | [BookingService.Bll/IntegrationEvents](Services/Booking/BookingService.Bll/IntegrationEvents) ([CatalogSyncHandlerBase.cs](Services/Booking/BookingService.Bll/IntegrationEvents/Handlers/CatalogSyncHandlerBase.cs)) |
+| Таблиця `dbo.ProcessedEvents` (PRIMARY KEY `EventId`), `PriceSyncedAt` / `TitleSyncedAt` | [db/p1/schema.sql](db/p1/schema.sql), [ProcessedEventRepository.cs](Services/Booking/BookingService.Dal/DapperRepositories/ProcessedEventRepository.cs), [ScreeningRepository.cs](Services/Booking/BookingService.Dal/DapperRepositories/ScreeningRepository.cs) |
+| Споживач і обробник Відгуків | [Reviews.WebApi/Messaging/CatalogEventsConsumer.cs](Services/Reviews/Reviews.WebApi/Messaging/CatalogEventsConsumer.cs), [Reviews.WebApi/IntegrationEvents](Services/Reviews/Reviews.WebApi/IntegrationEvents) → команда [SyncMovieTitle.cs](Services/Reviews/Reviews.Application/Movies/Commands/SyncMovieTitle.cs) |
+| `processedEvents` / `movieTitleSync` у MongoDB, `updateMany` в `reviews` і `discussions` | [IntegrationEventStore.cs](Services/Reviews/Reviews.Infrastructure/Persistence/IntegrationEventStore.cs), [ReviewRepository.cs](Services/Reviews/Reviews.Infrastructure/Persistence/Repositories/ReviewRepository.cs) |
+
+### 9.2. Події
+
+| Подія (`BasicProperties.Type`) | Routing key | Коли | Хто отримує | Що змінюється |
+|---|---|---|---|---|
+| `ScreeningScheduledEvent` | `screening.scheduled` | `POST /api/screenings` | Бронювання | новий рядок у копії `dbo.Screenings` (з розміром зали) |
+| `ScreeningPriceChangedEvent` | `screening.price_changed` | `PUT /api/screenings/{id}/price` (якщо ціна справді змінилася) | Бронювання | `BasePrice` копії; `Tickets.UnitPrice` оформлених бронювань — **ні** (знімок) |
+| `ScreeningCancelledEvent` | `screening.cancelled` | `POST /api/screenings/{id}/cancel` | Бронювання | `IsActive = 0` — нові бронювання на сеанс відхиляються |
+| `MovieRenamedEvent` | `movie.renamed` | `PUT /api/movies/{id}` (якщо назва змінилася) | Бронювання, Відгуки | `MovieTitle` в усіх сеансах фільму; `movieTitle` в усіх відгуках і обговореннях |
+
+Події незмінні (`sealed record` з позиційними параметрами), самодостатні й мають назви в минулому часі. Кожен сервіс тримає свою копію контракту (як в eShop), спільної бібліотеки контрактів немає. Збігатися мають назва типу і JSON-поля. Сумісність: нові поля лише додаються (невідомі поля споживач ігнорує), а несумісна версія (`x-schema-version` > підтримуваної) одразу йде в DLQ.
+
+### 9.3. Надійність
+
+* **Після збереження.** Каталог викликає `PublishAsync` лише після успішного `SaveChangesAsync`; при винятку (409, правило домену) подія не йде (тест `Failed_save_publishes_nothing`). Publisher чекає підтвердження брокера (publisher confirms); повідомлення persistent, exchange і черги durable. Якщо брокер недоступний уже після COMMIT, помилка логується з `EventId` / типом / `CorrelationId`, а клієнт отримує 200. Таку подію втрачено. Гарантію «зміна ⇔ подія» дав би Transactional Outbox: він не реалізований, див. [контрольне питання 6](docs/lab08-control-questions.md#6-як-гарантувати-що-подія-буде-опублікована-лише-після-успішного-збереження-в-бд-і-не-загубиться-що-таке-transactional-outbox).
+* **Ручне підтвердження.** `BasicAck` — лише після того, як обробник зберіг зміни. Не підтверджене повідомлення (сервіс упав, зупинився) брокер віддасть знову.
+* **Ідемпотентність.** Бронювання: `INSERT dbo.ProcessedEvents(EventId)` і зміна копії — одна транзакція; повтор → помилка 2627 → `Duplicate … пропущено` → ack. Відгуки (MongoDB standalone, без транзакцій): `updateMany` з фільтром «назва ≠ нова» (повтор нічого не змінює), потім `processedEvents` з `_id = EventId`.
+* **Порядок подій.** Повтор повертається в кінець черги, тож подія може прийти після новішої. `PriceSyncedAt` / `TitleSyncedAt` (Бронювання) і `movieTitleSync` (Відгуки) зберігають `OccurredAt` останньої застосованої зміни, і старіша подія її не перезапише.
+* **Retry / DLQ.**
+
+  | Випадок | Рішення | Лог |
+  |---|---|---|
+  | успіх | `BasicAck` | `Acked … оброблено за N мс` |
+  | дубль `EventId` | нічого не змінено, `BasicAck` | `Duplicate … пропущено` |
+  | некоректний JSON, невідомий тип, несумісна версія, невалідні дані | `BasicNack(requeue: false)` → DLQ одразу | `Nack … → DLQ …: постійна помилка` (Error) |
+  | тимчасова помилка (БД, мережа) | копія з `x-retry-count + 1` у ту саму чергу через 1 / 2 / 4 с, оригінал — `BasicAck` | `Retry 1/3 …` (Warning зі stack trace) |
+  | вичерпано 3 повтори | `BasicNack(requeue: false)` → DLQ | `Nack … вичерпано 3 повтори` (Error) |
+
+  Глибина DLQ — gauge `messaging.dlq.depth`; лічильник `messaging.events.consumed{outcome}` і гістограма `messaging.process.duration` — Meter `Platform.Messaging`.
+* **Логи.** Кожне рішення логується структуровано (`EventId`, `EventType`, `CorrelationId`, `Queue`, `RetryCount` — і як властивості scope); обробники додають ідентифікатори сутностей (`ScreeningId`, `MovieId`). У Dashboard логи публікації й обробки в трьох сервісах знаходяться фільтром `CorrelationId`.
+
+### 9.4. Перевірки «Перед здачею» і скріни
+
+Сценарій — [docs/lab08/scripts/demo.js](docs/lab08/scripts/demo.js), вивід — [docs/lab08/demo-report.txt](docs/lab08/demo-report.txt) (короткий звіт) і [docs/lab08/demo-output.txt](docs/lab08/demo-output.txt) (з логами з Dashboard).
+
+Платформа запускалась через AppHost (RabbitMQ 4.3, том `cinema-platform-rabbitmq-data`). Перед сценарієм `/health/ready` усіх трьох сервісів — `Healthy`, зокрема перевірка Aspire `RabbitMQ.Client`.
+
+| Перевірка | Результат | Скріни / дані |
+|---|---|---|
+| Management UI: exchanges, черги, bindings, DLX | `catalog-events` (topic, durable): `booking.catalog-sync` ← `screening.*`, `movie.*`; `reviews.catalog-sync` ← `movie.*`; `catalog-events.dlx` (direct) → `<черга>.dlq`; у черг ознаки `D`, `DLX`, `DLK` | [exchanges](docs/lab08/rabbitmq-exchanges.png), [bindings catalog-events](docs/lab08/rabbitmq-catalog-events-bindings.png), [bindings DLX](docs/lab08/rabbitmq-dlx-bindings.png), [черги](docs/lab08/rabbitmq-queues.png), [черга Бронювання](docs/lab08/rabbitmq-booking-queue-features.png), [bindings.json](docs/lab08/bindings.json) |
+| Зміна ціни в Каталозі | `PUT /api/screenings/1/price` → копія сеансу 1 у Бронюванні 300 → **305** за ~10 мс після публікації; квитки оформленого бронювання №1 лишилися по **250** (знімок) | [trace HTTP → Publish → Consume → DB](docs/lab08/trace-price-changed-e2e.png), [логи](docs/lab08/logs-e2e-price.png), [e2e-result.json](docs/lab08/e2e-result.json) |
+| Перейменування фільму | `PUT /api/movies/1` → нова назва в сеансах копії Бронювання, у **всіх** відгуках і обговореннях фільму; один trace на 3 сервіси (gateway → catalog-api → booking-api + reviews-api → SQL Server / MongoDB) | [trace](docs/lab08/trace-movie-renamed-e2e.png) |
+| Та сама подія двічі (той самий `EventId`) | 1-ша доставка: ціна 315 → 325; 2-га (у тілі 999): `Duplicate … пропущено`, ціна лишилась 325 | [логи](docs/lab08/logs-duplicate.png) |
+| Некоректний JSON через Management API / UI | `Nack … → DLQ booking.catalog-sync.dlq: постійна помилка` без повторів; у DLQ заголовок `x-death` (`reason: rejected`) | [логи](docs/lab08/logs-dlq-malformed.png), [повідомлення в DLQ](docs/lab08/rabbitmq-dlq-message.png), [dlq-booking-messages.json](docs/lab08/dlq-booking-messages.json) |
+| Несумісна версія (`x-schema-version: 2`) | обидва споживачі одразу відправили в свої DLQ | [логи](docs/lab08/logs-dlq-schema-version.png) |
+| SQL Server призупинено (`docker pause`) на час обробки | перша спроба впала за таймаутом підключення → `Retry 1/3 … через 1000 мс` (копія з `x-retry-count: 1`) → після відновлення оброблено, ціна застосована | [логи](docs/lab08/logs-retry.png) |
+| booking-api зупинено (кнопка Dashboard), змінено 3 ціни | Каталог відповідає 200; у `booking.catalog-sync` чекають **3** повідомлення, `consumers: 0`; після запуску всі три ціни застосовано | [черги](docs/lab08/rabbitmq-queues-booking-offline.png), [повідомлення в черзі](docs/lab08/booking-offline-waiting-messages.json), [логи](docs/lab08/logs-booking-offline.png) |
+| Метрики | `messaging.events.consumed` з тегом `outcome` = processed / retry / dead_letter, `messaging.dlq.depth`, `messaging.process.duration` | [метрика](docs/lab08/metrics-messaging-consumed.png), [ресурси](docs/lab08/dashboard-resources.png) |
+| Тести | 151 з 151 з базами (Booking 42, Catalog 49, Reviews 60). Нові: ack / nack / retry / DLQ споживача (`IntegrationEventConsumerTests`), ідемпотентність і транзакція обробників (`CatalogSyncHandlersTests`), публікація лише після `SaveChanges` (`MovieServiceTests`), `SyncMovieTitle` і MongoDB `processedEvents` / `movieTitleSync` (`MovieRenamedSyncTests`, `IntegrationEventStoreTests`) | |
+
+Відповіді на контрольні питання — [docs/lab08-control-questions.md](docs/lab08-control-questions.md).
+
+## 10. Політика дублювання даних
 
 Кожне поле має одного власника; інші сервіси зберігають знімок або копію (з Лаб. 01).
 
 | Поле | Де зберігається | Власник | Політика |
 |---|---|---|---|
 | `Tickets.MovieTitle`, `HallName`, `StartsAt`, `UnitPrice` | CinemaBooking | Каталог | знімок на момент бронювання, не оновлюється |
-| `Screenings.*` (MovieId, MovieTitle, HallName, StartsAt, BasePrice, IsActive …) | CinemaBooking | Каталог | копія; оновлюватиметься подіями `ScreeningChanged` тощо (Лаб. 08) |
-| `reviews.movieTitle`, `discussions.movieTitle` | cinema_reviews | Каталог | копія, оновлюється подією `MovieRenamed` |
+| `Screenings.*` (MovieId, MovieTitle, HallName, StartsAt, BasePrice, IsActive …) | CinemaBooking | Каталог | копія; **оновлюється подіями** `ScreeningScheduled`, `ScreeningPriceChanged`, `ScreeningCancelled`, `MovieRenamed` (Лаб. 08) |
+| `reviews.movieTitle`, `discussions.movieTitle` | cinema_reviews | Каталог | копія, **оновлюється подією** `MovieRenamed` (Лаб. 08) |
 | `author.displayName` | cinema_reviews | Бронювання (Customers.FullName) | копія, оновлюється подією `CustomerRenamed` |
 | `reviews.verifiedViewer` | cinema_reviews | Бронювання | знімок факту перегляду |
 | `Movies.AverageRating`, `RatingsCount` | CinemaCatalog | Відгуки | копія, оновлюється подією `MovieRatingChanged` |
 
 Aggregator нічого не зберігає: він читає актуальні дані у власників і показує розбіжності (наприклад, сеанс скасовано в каталозі, а в копії booking — ні) як `warnings`.
 
-## 10. Документи
+## 11. Документи
 
+* [docs/lab08-control-questions.md](docs/lab08-control-questions.md) — відповіді на контрольні питання Лаб. 08;
 * [docs/lab07-control-questions.md](docs/lab07-control-questions.md) — відповіді на контрольні питання Лаб. 07;
 * [docs/lab06-control-questions.md](docs/lab06-control-questions.md) — відповіді на контрольні питання Лаб. 06;
 * [docs/lab05-control-questions.md](docs/lab05-control-questions.md) — відповіді на контрольні питання Лаб. 05;
