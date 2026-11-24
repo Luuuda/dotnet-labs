@@ -1,0 +1,7 @@
+[
+  "catalog-events --[movie.*]--> booking.catalog-sync",
+  "catalog-events --[screening.*]--> booking.catalog-sync",
+  "catalog-events --[movie.*]--> reviews.catalog-sync",
+  "catalog-events.dlx --[booking.catalog-sync]--> booking.catalog-sync.dlq",
+  "catalog-events.dlx --[reviews.catalog-sync]--> reviews.catalog-sync.dlq"
+]

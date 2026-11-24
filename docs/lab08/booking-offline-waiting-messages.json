@@ -1,0 +1,53 @@
+[
+  {
+    "type": "ScreeningPriceChangedEvent",
+    "messageId": "2eca90a1-e836-485e-a9df-5c3bc466a95a",
+    "correlationId": "lab08-booking-offline",
+    "traceparent": "00-3bb25b3ed9c5ce5b3766062e71146e64-d716d6981dac7244-01",
+    "payload": {
+      "screeningId": 1,
+      "movieId": 3,
+      "movieTitle": "Дюна: Частина друга",
+      "oldPrice": 305,
+      "newPrice": 315,
+      "eventId": "2eca90a1-e836-485e-a9df-5c3bc466a95a",
+      "occurredAt": "2026-11-24T17:18:19.7915762Z",
+      "correlationId": "lab08-booking-offline",
+      "schemaVersion": 1
+    }
+  },
+  {
+    "type": "ScreeningPriceChangedEvent",
+    "messageId": "5f2d7235-59eb-426b-afd1-9ec70ad86877",
+    "correlationId": "lab08-booking-offline",
+    "traceparent": "00-a8d8e9869c37938938af54d8342a6948-2d21cd57caa0fadd-01",
+    "payload": {
+      "screeningId": 3,
+      "movieId": 1,
+      "movieTitle": "Довбуш (режисерська версія)",
+      "oldPrice": 315,
+      "newPrice": 325,
+      "eventId": "5f2d7235-59eb-426b-afd1-9ec70ad86877",
+      "occurredAt": "2026-11-24T17:18:19.8222931Z",
+      "correlationId": "lab08-booking-offline",
+      "schemaVersion": 1
+    }
+  },
+  {
+    "type": "ScreeningPriceChangedEvent",
+    "messageId": "a5e59399-484e-4525-92d7-e979223b055b",
+    "correlationId": "lab08-booking-offline",
+    "traceparent": "00-b2cf659be0b71e49e6d6e4d7286efcf4-82c4528436cb139e-01",
+    "payload": {
+      "screeningId": 5,
+      "movieId": 4,
+      "movieTitle": "Мавка. Лісова пісня",
+      "oldPrice": 150,
+      "newPrice": 160,
+      "eventId": "a5e59399-484e-4525-92d7-e979223b055b",
+      "occurredAt": "2026-11-24T17:18:19.8489204Z",
+      "correlationId": "lab08-booking-offline",
+      "schemaVersion": 1
+    }
+  }
+]

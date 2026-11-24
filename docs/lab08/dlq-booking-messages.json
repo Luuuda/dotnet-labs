@@ -1,0 +1,56 @@
+[
+  {
+    "type": "ScreeningPriceChangedEvent",
+    "messageId": "malformed-1795540656901",
+    "headers": {
+      "x-correlation-id": "lab08-malformed",
+      "x-death": [
+        {
+          "count": 1,
+          "exchange": "catalog-events",
+          "queue": "booking.catalog-sync",
+          "reason": "rejected",
+          "routing-keys": [
+            "screening.price_changed"
+          ],
+          "time": 1795540657
+        }
+      ],
+      "x-first-death-exchange": "catalog-events",
+      "x-first-death-queue": "booking.catalog-sync",
+      "x-first-death-reason": "rejected",
+      "x-last-death-exchange": "catalog-events",
+      "x-last-death-queue": "booking.catalog-sync",
+      "x-last-death-reason": "rejected",
+      "x-schema-version": 1
+    },
+    "payload": "{ \"eventId\": \"не guid\", \"screeningId\": "
+  },
+  {
+    "type": "MovieRenamedEvent",
+    "messageId": "0cf0f90a-15b1-4c45-b978-a654f079a9dc",
+    "headers": {
+      "x-correlation-id": "lab08-schema-v2",
+      "x-death": [
+        {
+          "count": 1,
+          "exchange": "catalog-events",
+          "queue": "booking.catalog-sync",
+          "reason": "rejected",
+          "routing-keys": [
+            "movie.renamed"
+          ],
+          "time": 1795540659
+        }
+      ],
+      "x-first-death-exchange": "catalog-events",
+      "x-first-death-queue": "booking.catalog-sync",
+      "x-first-death-reason": "rejected",
+      "x-last-death-exchange": "catalog-events",
+      "x-last-death-queue": "booking.catalog-sync",
+      "x-last-death-reason": "rejected",
+      "x-schema-version": 2
+    },
+    "payload": "{\"eventId\":\"0cf0f90a-15b1-4c45-b978-a654f079a9dc\",\"occurredAt\":\"2026-11-24T17:17:37.964Z\",\"schemaVersion\":2,\"movieId\":1,\"oldTitle\":\"Довбуш (режисерська версія)\",\"newTitle\":\"Довбуш v2\",\"originalTitle\":null}"
+  }
+]

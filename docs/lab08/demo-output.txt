@@ -1,0 +1,116 @@
+   5.1s :5180/health/ready -> 200 Healthy: booking-db=Healthy, booking-db-schema=Healthy, redis-cache=Healthy, RabbitMQ.Client=Healthy
+   5.1s :5280/health/ready -> 200 Healthy: catalog-db=Healthy, catalog-db-migrations=Healthy, redis-cache=Healthy, RabbitMQ.Client=Healthy
+   5.1s :5380/health/ready -> 200 Healthy: reviews-db=Healthy, reviews-db-indexes=Healthy, redis-cache=Healthy, RabbitMQ.Client=Healthy
+  15.3s PUT /api/screenings/1/price 305 -> 200, X-Trace-Id 18023a7a540bd795279d96da83dc33a5
+  18.3s Бронювання: копія сеансу 1 basePrice 300 -> 305 (syncedAt 2026-11-24T17:17:23.056)
+  18.3s Бронювання №1 (оформлене): квитки [1:250, 1:250] -> [1:250, 1:250] — ціни квитків не змінилися
+  18.5s PUT /api/movies/1 «Довбуш» -> «Довбуш (режисерська версія)»: 200, X-Trace-Id e950338f41ebe496fc6de30a8d363467
+  21.6s Бронювання: сеанс 3 movieTitle = «Довбуш (режисерська версія)»
+  21.6s Відгуки: 2 відгуків фільму 1, movieTitle = ["Довбуш (режисерська версія)"]
+  21.6s Обговорення: movieTitle = ["Довбуш (режисерська версія)"]
+  29.2s Дубль EventId a0f95a51-c00d-4b76-ba79-7291c112a9ad: після 1-ї доставки ціна 325, після 2-ї (у тілі 999) ціна 325 — повтор пропущено
+  38.3s Черги після некоректних повідомлень:
+   booking.catalog-sync: messages=0, consumers=1
+   booking.catalog-sync.dlq: messages=2, consumers=0
+   reviews.catalog-sync: messages=0, consumers=1
+   reviews.catalog-sync.dlq: messages=1, consumers=0
+  40.6s docker pause sql-e5883d7a: sql-e5883d7a
+  57.8s docker unpause sql-e5883d7a: sql-e5883d7a
+  60.0s Після відновлення SQL: сеанс 3 basePrice = 335 (очікувалось 335)
+  64.0s Dashboard booking-api: clicked Остановить ресурс
+  72.1s Бронювання зупинено; PUT /api/screenings/1/price 315 у Каталозі -> 200
+  72.1s Бронювання зупинено; PUT /api/screenings/3/price 325 у Каталозі -> 200
+  72.1s Бронювання зупинено; PUT /api/screenings/5/price 160 у Каталозі -> 200
+  85.2s У booking.catalog-sync чекають 3 повідомлень: ScreeningPriceChangedEvent 1→315; ScreeningPriceChangedEvent 3→325; ScreeningPriceChangedEvent 5→160
+  85.2s Черги, поки Бронювання не працює:
+   booking.catalog-sync: messages=3, consumers=0
+   booking.catalog-sync.dlq: messages=2, consumers=0
+   reviews.catalog-sync: messages=0, consumers=1
+   reviews.catalog-sync.dlq: messages=1, consumers=0
+screenshot rabbitmq-queues-booking-offline.png
+  95.0s Dashboard booking-api: clicked Запуск ресурса
+  99.7s Після запуску Бронювання: копія сеансу 1 basePrice = 315 (очікувалось 315)
+  99.8s Після запуску Бронювання: копія сеансу 3 basePrice = 325 (очікувалось 325)
+  99.8s Після запуску Бронювання: копія сеансу 5 basePrice = 160 (очікувалось 160)
+ 106.8s Черги:
+   booking.catalog-sync: messages=0, consumers=1
+   booking.catalog-sync.dlq: messages=2, consumers=0
+   reviews.catalog-sync: messages=0, consumers=1
+   reviews.catalog-sync.dlq: messages=1, consumers=0
+screenshot rabbitmq-exchanges.png
+screenshot rabbitmq-catalog-events-bindings.png
+screenshot rabbitmq-dlx-bindings.png
+screenshot rabbitmq-queues.png
+screenshot rabbitmq-booking-queue-features.png
+screenshot rabbitmq-dlq-message.png
+screenshot dashboard-resources.png
+screenshot trace-price-changed-e2e.png
+screenshot trace-movie-renamed-e2e.png
+screenshot metrics-messaging-consumed.png
+screenshot logs-e2e-price.png
+--- логи lab08-e2e-price: 18
+gateway Information 19:17:22,771 Request started "PUT" "/api/screenings/1/price" 18023a7
+catalog-api Information 19:17:22,776 Request started "PUT" "/api/screenings/1/price" 18023a7
+catalog-api Information 19:17:22,953 Cache invalidated ["catalog:screening:1", "catalog:movie:3"], reason "ScreeningPriceChanged" 18023a7
+catalog-api Information 19:17:22,955 Cache invalidated ["catalog:screenings:list:version"], reason "ScreeningPriceChanged": нова версія списків "639311374429543860" 18023a7
+catalog-api Information 19:17:22,956 Сеанс 1: нова ціна 305 18023a7
+catalog-api Information 19:17:22,957 Cache miss "catalog:screening:1" ("card") → читання з БД 18023a7
+catalog-api Information 19:17:23,000 Cache set "catalog:screening:1" ("card"): 432 байт, L1 120 с, L2 600 с 18023a7
+catalog-api Information 19:17:23,031 Published "ScreeningPriceChangedEvent" fc52fbe4-14c0-4431-b1b4-1b5c92613ad9 to "catalog-events"/"screening.price_changed" (322 байт, CorrelationId "lab08-e2e-price") 18023a7
+booking-api Information 19:17:23,034 Received "ScreeningPriceChangedEvent" "fc52fbe4-14c0-4431-b1b4-1b5c92613ad9" з черги "booking.catalog-sync" (спроба 1, CorrelationId "lab08-e2e-price") 18023a7
+catalog-api Information 19:17:23,039 Request finished "PUT" "/api/screenings/1/price" with 200 in 263 ms 18023a7
+gateway Information 19:17:23,042 "PUT" "/api/screenings/1/price" від "::1" -> route "screenings" / cluster "catalog" ("http://localhost:5280/"): 200 за 270 мс, null байт 18023a7
+gateway Information 19:17:23,042 Request finished "PUT" "/api/screenings/1/price" with 200 in 271 ms 18023a7
+booking-api Debug 19:17:23,045 Транзакцію розпочато (ReadCommitted) 18023a7
+screenshot logs-duplicate.png
+--- логи lab08-duplicate: 12
+booking-api Information 19:17:30,774 Received "ScreeningPriceChangedEvent" "a0f95a51-c00d-4b76-ba79-7291c112a9ad" з черги "booking.catalog-sync" (спроба 1, CorrelationId "lab08-duplicate") 5393971
+booking-api Debug 19:17:30,776 Транзакцію розпочато (ReadCommitted) 5393971
+booking-api Information 19:17:30,779 Сеанс 3: ціна 315 → 325 (оформлені квитки не змінюються) 5393971
+booking-api Debug 19:17:30,785 Транзакцію зафіксовано (Commit) 5393971
+booking-api Information 19:17:30,786 Cache invalidated ["booking:screening:3"], reason "ScreeningPriceChangedEvent" 5393971
+booking-api Information 19:17:30,787 Cache invalidated ["booking:screenings:list:version"], reason "ScreeningPriceChangedEvent": нова версія списків "639311374507865791" 5393971
+booking-api Information 19:17:30,787 Acked "ScreeningPriceChangedEvent" "a0f95a51-c00d-4b76-ba79-7291c112a9ad": оброблено за 13 мс 5393971
+booking-api Information 19:17:34,384 Received "ScreeningPriceChangedEvent" "a0f95a51-c00d-4b76-ba79-7291c112a9ad" з черги "booking.catalog-sync" (спроба 1, CorrelationId "lab08-duplicate") 7a3eff0
+booking-api Debug 19:17:34,386 Транзакцію розпочато (ReadCommitted) 7a3eff0
+booking-api Warning 19:17:34,397 Транзакцію відкочено (Rollback) 7a3eff0
+booking-api Information 19:17:34,397 Duplicate "ScreeningPriceChangedEvent" a0f95a51-c00d-4b76-ba79-7291c112a9ad пропущено: подію вже оброблено раніше (CorrelationId "lab08-duplicate") 7a3eff0
+booking-api Information 19:17:34,397 Acked "ScreeningPriceChangedEvent" "a0f95a51-c00d-4b76-ba79-7291c112a9ad": оброблено за 13 мс 7a3eff0
+screenshot logs-dlq-malformed.png
+--- логи lab08-malformed: 2
+booking-api Information 19:17:37,962 Received "ScreeningPriceChangedEvent" "malformed-1795540656901" з черги "booking.catalog-sync" (спроба 1, CorrelationId "lab08-malformed") 220ce3b
+booking-api Error 19:17:37,965 Nack "ScreeningPriceChangedEvent" "malformed-1795540656901" → DLQ "booking.catalog-sync".dlq: постійна помилка, повтор не допоможе (CorrelationId "lab08-malformed") 220ce3b
+screenshot logs-dlq-schema-version.png
+--- логи lab08-schema-v2: 4
+booking-api Information 19:17:39,049 Received "MovieRenamedEvent" "0cf0f90a-15b1-4c45-b978-a654f079a9dc" з черги "booking.catalog-sync" (спроба 1, CorrelationId "lab08-schema-v2") 8d11207
+reviews-api Information 19:17:39,049 Received "MovieRenamedEvent" "0cf0f90a-15b1-4c45-b978-a654f079a9dc" з черги "reviews.catalog-sync" (спроба 1, CorrelationId "lab08-schema-v2") 6cc554e
+booking-api Error 19:17:39,049 Nack "MovieRenamedEvent" "0cf0f90a-15b1-4c45-b978-a654f079a9dc" → DLQ "booking.catalog-sync".dlq: постійна помилка, повтор не допоможе (CorrelationId "lab08-schema-v2") 8d11207
+reviews-api Error 19:17:39,050 Nack "MovieRenamedEvent" "0cf0f90a-15b1-4c45-b978-a654f079a9dc" → DLQ "reviews.catalog-sync".dlq: постійна помилка, повтор не допоможе (CorrelationId "lab08-schema-v2") 6cc554e
+screenshot logs-retry.png
+--- логи lab08-retry: 9
+booking-api Information 19:17:49,537 Received "ScreeningPriceChangedEvent" "45cd0324-f9a4-4102-817b-80f20b0790fb" з черги "booking.catalog-sync" (спроба 1, CorrelationId "lab08-retry") d0733a2
+booking-api Warning 19:18:05,627 Retry 1/3 для "ScreeningPriceChangedEvent" "45cd0324-f9a4-4102-817b-80f20b0790fb" через 1000 мс (CorrelationId "lab08-retry") d0733a2
+booking-api Information 19:18:06,643 Received "ScreeningPriceChangedEvent" "45cd0324-f9a4-4102-817b-80f20b0790fb" з черги "booking.catalog-sync" (спроба 2, CorrelationId "lab08-retry") 0891e9a
+booking-api Debug 19:18:06,645 Транзакцію розпочато (ReadCommitted) 0891e9a
+booking-api Information 19:18:06,647 Сеанс 3: ціна 325 → 335 (оформлені квитки не змінюються) 0891e9a
+booking-api Debug 19:18:06,652 Транзакцію зафіксовано (Commit) 0891e9a
+booking-api Information 19:18:06,653 Cache invalidated ["booking:screening:3"], reason "ScreeningPriceChangedEvent" 0891e9a
+booking-api Information 19:18:06,654 Cache invalidated ["booking:screenings:list:version"], reason "ScreeningPriceChangedEvent": нова версія списків "639311374866538253" 0891e9a
+booking-api Information 19:18:06,654 Acked "ScreeningPriceChangedEvent" "45cd0324-f9a4-4102-817b-80f20b0790fb": оброблено за 11 мс 0891e9a
+screenshot logs-booking-offline.png
+--- логи lab08-booking-offline: 54
+gateway Information 19:18:19,767 Request started "PUT" "/api/screenings/1/price" 3bb25b3
+catalog-api Information 19:18:19,768 Request started "PUT" "/api/screenings/1/price" 3bb25b3
+catalog-api Information 19:18:19,785 Cache invalidated ["catalog:screening:1", "catalog:movie:3"], reason "ScreeningPriceChanged" 3bb25b3
+catalog-api Information 19:18:19,786 Cache invalidated ["catalog:screenings:list:version"], reason "ScreeningPriceChanged": нова версія списків "639311374997855403" 3bb25b3
+catalog-api Information 19:18:19,786 Сеанс 1: нова ціна 315 3bb25b3
+catalog-api Information 19:18:19,787 Cache miss "catalog:screening:1" ("card") → читання з БД 3bb25b3
+catalog-api Information 19:18:19,791 Cache set "catalog:screening:1" ("card"): 432 байт, L1 120 с, L2 600 с 3bb25b3
+catalog-api Information 19:18:19,794 Published "ScreeningPriceChangedEvent" 2eca90a1-e836-485e-a9df-5c3bc466a95a to "catalog-events"/"screening.price_changed" (328 байт, CorrelationId "lab08-booking-offline") 3bb25b3
+catalog-api Information 19:18:19,794 Request finished "PUT" "/api/screenings/1/price" with 200 in 25 ms 3bb25b3
+gateway Information 19:18:19,794 "PUT" "/api/screenings/1/price" від "::1" -> route "screenings" / cluster "catalog" ("http://localhost:5280/"): 200 за 27 мс, null байт 3bb25b3
+gateway Information 19:18:19,795 Request finished "PUT" "/api/screenings/1/price" with 200 in 27 ms 3bb25b3
+gateway Information 19:18:19,802 Request started "PUT" "/api/screenings/3/price" a8d8e98
+catalog-api Information 19:18:19,803 Request started "PUT" "/api/screenings/3/price" a8d8e98
+ 238.2s Назву фільму повернуто: «Довбуш» -> 200
+EXIT=0 
