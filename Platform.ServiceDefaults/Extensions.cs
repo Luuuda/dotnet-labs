@@ -175,7 +175,7 @@ public static class Extensions
                 .AddSource(builder.Environment.ApplicationName)
                 .AddSource(BusinessActivitySources)
                 .AddSource(MongoActivitySource)
-                // Лаб. 08: span-и публікації (Producer) і обробки (Consumer) повідомлень RabbitMQ — Platform.Messaging,
+                // Лаб. 08: span-и публікації (Producer) і обробки (Consumer) повідомлень RabbitMQ (Platform.EventBus/TracePropagation),
                 // зв'язані через W3C traceparent у заголовках: HTTP → Publish → Consume → DB в одному trace
                 .AddSource("Platform.Messaging")
                 .AddAspNetCoreInstrumentation(options =>

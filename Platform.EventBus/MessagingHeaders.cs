@@ -1,4 +1,4 @@
-namespace Platform.Messaging;
+namespace Platform.EventBus;
 
 /// <summary>Назви заголовків повідомлень (RabbitMQ headers) — однакові в publisher і consumer.</summary>
 public static class MessagingHeaders

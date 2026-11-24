@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Logging;
 
-namespace Platform.Messaging;
+namespace Platform.EventBus;
 
 /// <summary>
 /// Публікатор для запуску без брокера (unit / API-тести, окремий запуск сервісу без AppHost): подія лише

@@ -1,9 +1,9 @@
 using BookingService.Bll.Caching;
 using BookingService.Dal.Abstractions;
 using Microsoft.Extensions.Logging;
-using Platform.Messaging;
+using Platform.EventBus;
 
-namespace BookingService.Bll.IntegrationEvents.Handlers;
+namespace BookingService.Api.IntegrationEvents.Handlers;
 
 /// <summary>
 /// Нова ціна сеансу → BasePrice копії (для МАЙБУТНІХ бронювань). Ціни в уже оформлених квитках

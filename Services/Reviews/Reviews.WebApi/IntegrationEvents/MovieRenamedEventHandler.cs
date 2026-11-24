@@ -1,5 +1,5 @@
 using MediatR;
-using Platform.Messaging;
+using Platform.EventBus;
 using Reviews.Application.Movies.Commands;
 using AppValidationException = Reviews.Application.Common.Exceptions.ValidationException;
 

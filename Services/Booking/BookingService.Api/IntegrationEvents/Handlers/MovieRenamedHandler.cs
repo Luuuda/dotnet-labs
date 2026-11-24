@@ -1,9 +1,9 @@
 using BookingService.Bll.Caching;
 using BookingService.Dal.Abstractions;
 using Microsoft.Extensions.Logging;
-using Platform.Messaging;
+using Platform.EventBus;
 
-namespace BookingService.Bll.IntegrationEvents.Handlers;
+namespace BookingService.Api.IntegrationEvents.Handlers;
 
 /// <summary>Фільм перейменовано → MovieTitle в усіх його сеансах копії (назва в оформлених квитках — знімок).</summary>
 public sealed class MovieRenamedHandler(IUnitOfWork uow, ITwoLevelCache cache, ILogger<MovieRenamedHandler> logger)

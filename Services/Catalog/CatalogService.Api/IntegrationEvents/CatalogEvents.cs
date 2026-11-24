@@ -1,4 +1,4 @@
-namespace CatalogService.Bll.IntegrationEvents;
+namespace CatalogService.Api.IntegrationEvents;
 
 /// <summary>
 /// Лаб. 08: контракт подій Каталогу в RabbitMQ — exchange і routing keys. Каталог — власник фільмів і сеансів;

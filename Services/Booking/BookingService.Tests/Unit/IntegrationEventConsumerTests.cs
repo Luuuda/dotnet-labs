@@ -1,10 +1,10 @@
 using System.Text;
 using System.Text.Json;
-using BookingService.Bll.IntegrationEvents;
+using BookingService.Api.IntegrationEvents;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
-using Platform.Messaging;
+using Platform.EventBus;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 

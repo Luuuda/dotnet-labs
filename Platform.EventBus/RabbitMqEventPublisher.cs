@@ -5,7 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using RabbitMQ.Client;
 
-namespace Platform.Messaging;
+namespace Platform.EventBus;
 
 /// <summary>
 /// Публікація інтеграційних подій у RabbitMQ (RabbitMQ.Client 7.x).

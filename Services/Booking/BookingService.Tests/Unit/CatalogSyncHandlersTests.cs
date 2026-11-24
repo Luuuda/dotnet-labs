@@ -1,8 +1,8 @@
-using BookingService.Bll.IntegrationEvents;
-using BookingService.Bll.IntegrationEvents.Handlers;
+using BookingService.Api.IntegrationEvents;
+using BookingService.Api.IntegrationEvents.Handlers;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
-using Platform.Messaging;
+using Platform.EventBus;
 
 namespace BookingService.Tests.Unit;
 

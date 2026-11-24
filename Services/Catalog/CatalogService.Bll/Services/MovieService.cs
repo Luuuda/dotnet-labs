@@ -1,13 +1,11 @@
 using AutoMapper;
 using CatalogService.Bll.Caching;
 using CatalogService.Bll.Dtos;
-using CatalogService.Bll.IntegrationEvents;
 using CatalogService.Bll.Specifications;
 using CatalogService.Dal.Abstractions;
 using CatalogService.Domain.Entities;
 using CatalogService.Domain.Exceptions;
 using Microsoft.Extensions.Logging;
-using Platform.Messaging;
 
 namespace CatalogService.Bll.Services;
 
@@ -18,7 +16,7 @@ namespace CatalogService.Bll.Services;
 /// Лаб. 06: читання — cache-aside через дворівневий кеш (L1 пам'ять → L2 Redis → БД); кожен запис синхронно
 /// інвалідує картку фільму й версію списків. REST-контролер і gRPC-сервіс викликають ті самі методи, тож кеш спільний.
 /// </summary>
-public sealed class MovieService(IUnitOfWork uow, IMapper mapper, TimeProvider clock, ITwoLevelCache cache, IEventPublisher events,
+public sealed class MovieService(IUnitOfWork uow, IMapper mapper, TimeProvider clock, ITwoLevelCache cache, ICatalogIntegrationEventService integrationEvents,
     ILogger<MovieService> logger)
     : IMovieService
 {
@@ -100,9 +98,7 @@ public sealed class MovieService(IUnitOfWork uow, IMapper mapper, TimeProvider c
         // Лаб. 08: лише після успішного SaveChangesAsync і лише якщо назва справді змінилася —
         // копії назви є в Бронюванні (dbo.Screenings.MovieTitle) і Відгуках (reviews / discussions.movieTitle)
         if (!string.Equals(oldTitle, movie.Title, StringComparison.Ordinal))
-            await events.PublishAsync(
-                new MovieRenamedEvent(id, oldTitle, movie.Title, movie.OriginalTitle) { CorrelationId = CorrelationContext.Current },
-                CatalogEvents.Exchange, CatalogEvents.RoutingKeys.MovieRenamed, ct);
+            await integrationEvents.PublishMovieRenamedAsync(id, oldTitle, movie.Title, movie.OriginalTitle, ct);
         return await GetByIdAsync(id, ct);
     }
 

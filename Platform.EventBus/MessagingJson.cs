@@ -1,7 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace Platform.Messaging;
+namespace Platform.EventBus;
 
 /// <summary>
 /// Єдиний формат тіла повідомлень для publisher і consumer: System.Text.Json, camelCase, enum — рядками,

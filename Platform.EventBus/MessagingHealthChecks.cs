@@ -1,7 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
-namespace Platform.Messaging;
+namespace Platform.EventBus;
 
 /// <summary>
 /// Health check RabbitMQ реєструє сама Aspire-інтеграція: builder.AddRabbitMQClient("messaging") додає перевірку

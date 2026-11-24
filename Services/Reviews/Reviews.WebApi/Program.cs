@@ -12,9 +12,8 @@ using Reviews.WebApi.Grpc;
 using Reviews.WebApi.HealthChecks;
 using Reviews.WebApi.Infrastructure;
 using Reviews.WebApi.IntegrationEvents;
-using Reviews.WebApi.Messaging;
 using Reviews.WebApi.Metrics;
-using Platform.Messaging;
+using Platform.EventBus;
 using Platform.ServiceDefaults;
 using Platform.ServiceDefaults.Grpc;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
@@ -94,8 +93,8 @@ builder.Services.AddGrpcHealthChecks(o =>
     o.UseHealthChecksCache = false;
 });
 
-// --- Лаб. 08: RabbitMQ — споживач подій Каталогу (Messaging/CatalogEventsConsumer, черга reviews.catalog-sync) ----
-// IConnection реєструє Aspire-інтеграція (ConnectionStrings:messaging від AppHost). Трасування — Platform.Messaging
+// --- Лаб. 08: RabbitMQ — споживач подій Каталогу (IntegrationEvents/CatalogEventsConsumer, черга reviews.catalog-sync) ----
+// IConnection реєструє Aspire-інтеграція (ConnectionStrings:messaging від AppHost). Трасування — Platform.EventBus
 // (span Consumer — нащадок span публікації в Каталозі), тому вбудоване трасування клієнта вимкнено.
 // Без брокера (тести, окремий запуск) споживач не реєструється.
 builder.Services.AddScoped<IIntegrationEventHandler<MovieRenamedEvent>, MovieRenamedEventHandler>();

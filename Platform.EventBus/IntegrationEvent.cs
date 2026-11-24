@@ -1,4 +1,4 @@
-namespace Platform.Messaging;
+namespace Platform.EventBus;
 
 /// <summary>
 /// Базовий тип інтеграційної події (Лаб. 08). Подія — незмінний record: бізнес-факт, що вже стався,

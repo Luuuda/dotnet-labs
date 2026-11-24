@@ -1,6 +1,6 @@
 using RabbitMQ.Client;
 
-namespace Platform.Messaging;
+namespace Platform.EventBus;
 
 /// <summary>
 /// Декларативна топологія RabbitMQ (Лаб. 08, Частина 1.3). Оголошується в коді під час старту застосунку:

@@ -1,4 +1,4 @@
-using Platform.Messaging;
+using Platform.EventBus;
 
 namespace CatalogService.Tests.Unit;
 

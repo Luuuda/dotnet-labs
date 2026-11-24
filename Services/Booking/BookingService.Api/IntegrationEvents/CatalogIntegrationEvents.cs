@@ -1,6 +1,6 @@
-using Platform.Messaging;
+using Platform.EventBus;
 
-namespace BookingService.Bll.IntegrationEvents;
+namespace BookingService.Api.IntegrationEvents;
 
 // Лаб. 08: контракти подій Каталогу, на які підписане Бронювання. Кожен сервіс тримає власну копію контракту
 // (як в eShop: IntegrationEvents у кожному сервісі) — спільної бібліотеки контрактів, що зв'язала б сервіси

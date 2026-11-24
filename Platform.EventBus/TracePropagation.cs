@@ -5,7 +5,7 @@ using OpenTelemetry.Context.Propagation;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 
-namespace Platform.Messaging;
+namespace Platform.EventBus;
 
 /// <summary>
 /// Передача контексту трасування через брокер (Лаб. 08, Частина 4). Без неї обробка події в іншому сервісі
@@ -17,7 +17,7 @@ namespace Platform.Messaging;
 /// «&lt;черга&gt; process» стає нащадком span публікації — так утворюється наскрізний trace
 /// HTTP → Publish → Consume → DB.</item>
 /// </list>
-/// ActivitySource «Platform.Messaging» підключено в Platform.ServiceDefaults (AddSource).
+/// ActivitySource «Platform.Messaging» (назва з методички) підключено в Platform.ServiceDefaults: .AddSource("Platform.Messaging").
 /// </summary>
 public static class TracePropagation
 {

@@ -1,9 +1,8 @@
-using BookingService.Bll.IntegrationEvents;
-using Platform.Messaging;
+using Platform.EventBus;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 
-namespace BookingService.Api.Messaging;
+namespace BookingService.Api.IntegrationEvents;
 
 /// <summary>
 /// Лаб. 08: споживач подій Каталогу — BackgroundService, що живе весь час роботи сервісу.
