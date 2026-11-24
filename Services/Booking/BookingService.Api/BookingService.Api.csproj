@@ -14,6 +14,8 @@
     <PackageReference Include="AspNetCore.HealthChecks.SqlServer" Version="9.0.0" />
     <PackageReference Include="AspNetCore.HealthChecks.Redis" Version="9.0.0" />
     <PackageReference Include="Grpc.AspNetCore.HealthChecks" Version="2.71.0" />
+    <!-- Лаб. 08: RabbitMQ через Aspire-інтеграцію (IConnection, RabbitMQ.Client 7.x, повторні спроби підключення) -->
+    <PackageReference Include="Aspire.RabbitMQ.Client" Version="13.6.5" />
   </ItemGroup>
   <ItemGroup>
     <Protobuf Include="Protos\booking.proto" GrpcServices="Server" />
@@ -21,6 +23,7 @@
   <ItemGroup>
     <!-- Лаб. 05: спільні налаштування платформи (логування, трасування, health checks) -->
     <ProjectReference Include="..\..\..\Platform.ServiceDefaults\Platform.ServiceDefaults.csproj" />
+    <ProjectReference Include="..\..\..\Platform.Messaging\Platform.Messaging.csproj" />
     <ProjectReference Include="..\BookingService.Bll\BookingService.Bll.csproj" />
   </ItemGroup>
 </Project>

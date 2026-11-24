@@ -11,5 +11,7 @@
   <ItemGroup>
     <ProjectReference Include="..\BookingService.Dal\BookingService.Dal.csproj" />
     <ProjectReference Include="..\BookingService.Domain\BookingService.Domain.csproj" />
+    <!-- Лаб. 08: IntegrationEvent, IIntegrationEventHandler, PermanentMessageException -->
+    <ProjectReference Include="..\..\..\Platform.Messaging\Platform.Messaging.csproj" />
   </ItemGroup>
 </Project>

@@ -11,7 +11,10 @@ using Reviews.Application.Caching;
 using Reviews.WebApi.Grpc;
 using Reviews.WebApi.HealthChecks;
 using Reviews.WebApi.Infrastructure;
+using Reviews.WebApi.IntegrationEvents;
+using Reviews.WebApi.Messaging;
 using Reviews.WebApi.Metrics;
+using Platform.Messaging;
 using Platform.ServiceDefaults;
 using Platform.ServiceDefaults.Grpc;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
@@ -90,6 +93,18 @@ builder.Services.AddGrpcHealthChecks(o =>
     o.Services.Map("", check => check.Tags.Contains(HealthTags.Ready));
     o.UseHealthChecksCache = false;
 });
+
+// --- Лаб. 08: RabbitMQ — споживач подій Каталогу (Messaging/CatalogEventsConsumer, черга reviews.catalog-sync) ----
+// IConnection реєструє Aspire-інтеграція (ConnectionStrings:messaging від AppHost). Трасування — Platform.Messaging
+// (span Consumer — нащадок span публікації в Каталозі), тому вбудоване трасування клієнта вимкнено.
+// Без брокера (тести, окремий запуск) споживач не реєструється.
+builder.Services.AddScoped<IIntegrationEventHandler<MovieRenamedEvent>, MovieRenamedEventHandler>();
+if (builder.Configuration.GetConnectionString("messaging") is { Length: > 0 })
+{
+    builder.AddRabbitMQClient("messaging", settings => settings.DisableTracing = true);   // IConnection + health check «RabbitMQ.Client»
+    builder.Services.AddHostedService<CatalogEventsConsumer>();
+    builder.Services.AddRabbitMqToReadiness(HealthTags.Ready);   // перевірку Aspire — у /health/ready зі статусом Degraded
+}
 
 // --- Лаб. 07: бізнес-метрики (Metrics/, Meter «Reviews.WebApi») ----------------------------------------------------
 builder.Services.AddSingleton<ReviewsMetrics>();

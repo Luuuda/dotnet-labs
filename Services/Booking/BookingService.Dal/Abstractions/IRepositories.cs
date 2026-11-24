@@ -26,6 +26,34 @@ public interface IScreeningRepository : IGenericRepository<Screening>
     Task<IReadOnlyList<Screening>> GetUpcomingAsync(DateTime from, bool onlyActive, CancellationToken ct = default);
     /// <summary>Оновлення копії за подією з Каталогу (ScreeningChanged / MovieRenamed).</summary>
     Task<bool> UpdateAsync(Screening screening, CancellationToken ct = default);
+
+    // --- Лаб. 08: оновлення копії подіями з Каталогу. Кожен метод застосовує зміну, лише якщо подія НОВІША
+    // за останню застосовану (SyncedAt < @OccurredAt): пізня подія не перезапише свіжіші дані (out-of-order).
+    // Знімки в Tickets (MovieTitle, UnitPrice) ці методи не чіпають — це ціна на момент покупки.
+
+    /// <summary>Новий сеанс → вставка копії (якщо його ще немає). Повертає число змінених рядків.</summary>
+    Task<int> UpsertFromCatalogAsync(Screening screening, DateTime occurredAt, CancellationToken ct = default);
+    /// <summary>Нова базова ціна сеансу (на майбутні бронювання).</summary>
+    Task<int> ChangePriceFromCatalogAsync(long screeningId, decimal newPrice, DateTime occurredAt, CancellationToken ct = default);
+    /// <summary>Сеанс скасовано в Каталозі → IsActive = 0 (нові бронювання на нього неможливі).</summary>
+    Task<int> DeactivateFromCatalogAsync(long screeningId, DateTime occurredAt, CancellationToken ct = default);
+    /// <summary>Фільм перейменовано → нова назва в усіх його сеансах.</summary>
+    Task<int> RenameMovieFromCatalogAsync(int movieId, string movieTitle, DateTime occurredAt, CancellationToken ct = default);
+    /// <summary>Ідентифікатори сеансів фільму в копії (для інвалідації кешу після перейменування).</summary>
+    Task<IReadOnlyList<long>> GetIdsByMovieAsync(int movieId, CancellationToken ct = default);
+}
+
+/// <summary>
+/// Лаб. 08: оброблені інтеграційні події (dbo.ProcessedEvents, PRIMARY KEY = EventId) — ідемпотентність споживача.
+/// </summary>
+public interface IProcessedEventRepository
+{
+    /// <summary>
+    /// Записує EventId у поточній транзакції Unit of Work. false — подію вже оброблено (порушення PRIMARY KEY, 2627).
+    /// </summary>
+    Task<bool> TryAddAsync(Guid eventId, string eventType, CancellationToken ct = default);
+    /// <summary>Чи оброблено подію (для діагностики й тестів).</summary>
+    Task<bool> ExistsAsync(Guid eventId, CancellationToken ct = default);
 }
 
 /// <summary>Бронювання — корінь агрегату (Dapper: multi-mapping, процедури).</summary>

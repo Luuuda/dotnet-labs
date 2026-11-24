@@ -25,7 +25,8 @@ public static class DependencyInjection
         services.AddScoped<IDiscussionRepository, DiscussionRepository>();
         services.AddScoped<IReviewQueries, ReviewQueries>();
         services.AddScoped<IDiscussionQueries, DiscussionQueries>();
-        services.AddScoped<IStoreReadiness, MongoStoreReadiness>();      // Лаб. 07: готовність індексів для health check
+        services.AddScoped<IStoreReadiness, MongoStoreReadiness>();
+        services.AddScoped<IIntegrationEventStore, IntegrationEventStore>();   // Лаб. 08: оброблені події (processedEvents)      // Лаб. 07: готовність індексів для health check
 
         services.AddScoped<IDataSeeder, ReviewSeeder>();
         services.AddScoped<IDataSeeder, DiscussionSeeder>();

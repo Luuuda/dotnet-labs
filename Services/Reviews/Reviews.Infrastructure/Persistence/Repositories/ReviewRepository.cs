@@ -24,4 +24,18 @@ public sealed class ReviewRepository(MongoDbContext context)
 }
 
 public sealed class DiscussionRepository(MongoDbContext context)
-    : MongoRepository<Discussion>(context.Discussions), IDiscussionRepository;
+    : MongoRepository<Discussion>(context.Discussions), IDiscussionRepository
+{
+    /// <summary>Лаб. 08: updateMany за movieId; документи, де назва вже нова, не змінюються (повтор — no-op).</summary>
+    public async Task<long> RenameMovieAsync(int movieId, string movieTitle, CancellationToken ct = default)
+    {
+        var update = Builders<Discussion>.Update
+            .Set(d => d.MovieTitle, movieTitle)
+            .Set(d => d.UpdatedAt, DateTime.UtcNow)
+            .Inc(d => d.Version, 1);
+        var result = await Collection.UpdateManyAsync(
+            Builders<Discussion>.Filter.Eq(d => d.MovieId, movieId) & Builders<Discussion>.Filter.Ne(d => d.MovieTitle, movieTitle),
+            update, cancellationToken: ct);
+        return result.ModifiedCount;
+    }
+}
