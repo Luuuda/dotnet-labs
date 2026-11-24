@@ -50,7 +50,11 @@ else
 builder.Services.AddHealthChecks().AddCheck<CacheStatisticsHealthCheck>("reviews-cache");
 
 // --- Лаб. 06: gRPC: окремий порт Kestrel лише з HTTP/2 (appsettings.json, Kestrel:Endpoints:Grpc) ---------
-builder.AddPlatformGrpc();
+builder.Services.AddGrpc(options =>
+{
+    options.Interceptors.Add<GrpcServerLoggingInterceptor>();          // серверний interceptor логування (Platform.ServiceDefaults/Grpc)
+    options.EnableDetailedErrors = builder.Environment.IsDevelopment(); // деталі винятків у відповіді — лише в Development
+});
 
 // Кожен шар реєструє свої залежності сам
 builder.Services

@@ -9,7 +9,7 @@ namespace Platform.ServiceDefaults.Grpc;
 /// Серверний interceptor (Лаб. 06): логує кожен вхідний gRPC-виклик структурованими властивостями —
 /// метод, peer (адреса клієнта), статус, тривалість, CorrelationId з метаданих — і доповнює span сервера.
 /// Помилки логуються зі статусом: клієнтські (NotFound, InvalidArgument…) — Warning, серверні — Error зі stack trace.
-/// Підключається до всіх сервісів через <see cref="GrpcExtensions.AddPlatformGrpc"/>.
+/// Підключається в Program.cs кожного сервісу: <c>AddGrpc(o => o.Interceptors.Add&lt;GrpcServerLoggingInterceptor&gt;())</c>.
 /// </summary>
 public sealed class GrpcServerLoggingInterceptor(ILogger<GrpcServerLoggingInterceptor> logger) : Interceptor
 {

@@ -128,6 +128,9 @@ public sealed class BookingsService(
         }
 
         activity?.SetTag("booking.id", bookingId);
+        // Інвалідація одразу після POST: ключ картки скидається в L1 і Redis (інші репліки теж), далі GetAsync
+        // читає щойно збережений агрегат з БД і кладе в кеш свіжу картку.
+        await cache.InvalidateAsync("BookingCreated", ct, CacheKeys.Booking(bookingId));
         var created = await GetAsync(bookingId, ct);
         logger.LogInformation("Створено бронювання {BookingId}: сеанс {ScreeningId}, {SeatCount} місць на суму {Amount}, статус {Status}",
             bookingId, input.ScreeningId, input.Seats.Count, created.TotalAmount, created.Status);
