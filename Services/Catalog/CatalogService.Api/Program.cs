@@ -7,6 +7,7 @@ using CatalogService.Api.Infrastructure;
 using CatalogService.Api.Metrics;
 using CatalogService.Bll.Caching;
 using CatalogService.Bll;
+using Platform.Messaging;
 using Platform.ServiceDefaults;
 using Platform.ServiceDefaults.Grpc;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
@@ -87,6 +88,22 @@ builder.Services.AddGrpcHealthChecks(o =>
     o.Services.Map("", check => check.Tags.Contains(HealthTags.Ready));
     o.UseHealthChecksCache = false;
 });
+
+// --- Лаб. 08: RabbitMQ — публікація інтеграційних подій Каталогу (IEventPublisher, exchange catalog-events) --------
+// IConnection реєструє Aspire-інтеграція (ConnectionStrings:messaging від AppHost); один канал публікації з publisher
+// confirms на сервіс (Singleton). Трасування публікації — Platform.Messaging (span Producer + traceparent).
+// Без брокера (тести, окремий запуск) події лише логуються (LoggingOnlyEventPublisher).
+if (builder.Configuration.GetConnectionString("messaging") is { Length: > 0 })
+{
+    builder.AddRabbitMQClient("messaging", settings => settings.DisableTracing = true);   // IConnection + health check «RabbitMQ.Client»
+    builder.Services.AddSingleton<RabbitMqEventPublisher>();
+    builder.Services.AddSingleton<IEventPublisher>(sp => new CatalogService.Bll.IntegrationEvents.AfterCommitEventPublisher(
+        sp.GetRequiredService<RabbitMqEventPublisher>(),
+        sp.GetRequiredService<ILogger<CatalogService.Bll.IntegrationEvents.AfterCommitEventPublisher>>()));
+    builder.Services.AddRabbitMqToReadiness(HealthTags.Ready);   // перевірку Aspire — у /health/ready зі статусом Degraded
+}
+else
+    builder.Services.AddSingleton<IEventPublisher, LoggingOnlyEventPublisher>();
 
 // --- Лаб. 07: бізнес-метрики (Metrics/, Meter «CatalogService.Api») ------------------------------------------------
 builder.Services.AddSingleton<CatalogMetrics>();

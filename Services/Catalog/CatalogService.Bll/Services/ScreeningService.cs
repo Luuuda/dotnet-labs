@@ -1,16 +1,24 @@
 using AutoMapper;
 using CatalogService.Bll.Caching;
 using CatalogService.Bll.Dtos;
+using CatalogService.Bll.IntegrationEvents;
 using CatalogService.Bll.Specifications;
 using CatalogService.Dal.Abstractions;
 using CatalogService.Domain.Entities;
 using CatalogService.Domain.Exceptions;
 using Microsoft.Extensions.Logging;
+using Platform.Messaging;
 
 namespace CatalogService.Bll.Services;
 
-/// <summary>Розклад. Лаб. 06: сеанс і сторінки розкладу читаються через дворівневий кеш, запис інвалідує їх синхронно.</summary>
-public sealed class ScreeningService(IUnitOfWork uow, IMapper mapper, ITwoLevelCache cache, ILogger<ScreeningService> logger) : IScreeningService
+/// <summary>
+/// Розклад. Лаб. 06: сеанс і сторінки розкладу читаються через дворівневий кеш, запис інвалідує їх синхронно.
+/// Лаб. 08: кожна операція запису після успішного SaveChangesAsync публікує інтеграційну подію в catalog-events
+/// (ScreeningScheduled / ScreeningPriceChanged / ScreeningCancelled). Якщо збереження не вдалося (виняток, 409),
+/// до публікації виконання не доходить — подія про зміну, якої немає, не з'явиться.
+/// </summary>
+public sealed class ScreeningService(IUnitOfWork uow, IMapper mapper, ITwoLevelCache cache, IEventPublisher events,
+    ILogger<ScreeningService> logger) : IScreeningService
 {
     public async Task<PagedResult<ScreeningDto>> GetListAsync(ScreeningQuery query, CancellationToken ct)
     {
@@ -60,11 +68,17 @@ public sealed class ScreeningService(IUnitOfWork uow, IMapper mapper, ITwoLevelC
             throw new ConflictException($"Зала «{hall.Name}» зайнята в цей час ({screening.StartsAt:dd.MM HH:mm}–{screening.EndsAt:HH:mm})");
 
         await uow.Screenings.AddAsync(screening, ct);
-        await uow.SaveChangesAsync(ct);
+        await uow.SaveChangesAsync(ct);                                     // 1) зміни збережено
         await InvalidateAsync(null, movie.Id, "ScreeningScheduled", ct);   // у картці фільму — найближчі сеанси
         activity?.SetTag("screening.id", screening.Id);
         logger.LogInformation("Заплановано сеанс {ScreeningId}: фільм {MovieId}, зала {HallId}, {StartsAt}, ціна {Price}",
             screening.Id, movie.Id, hall.Id, screening.StartsAt, screening.BasePrice);
+
+        await events.PublishAsync(                                          // 2) лише тоді — подія
+            new ScreeningScheduledEvent(screening.Id, movie.Id, movie.Title, hall.Id, hall.Name, hall.RowsCount,
+                hall.SeatsPerRow, screening.StartsAt, screening.Format, screening.BasePrice)
+            { CorrelationId = CorrelationContext.Current },
+            CatalogEvents.Exchange, CatalogEvents.RoutingKeys.ScreeningScheduled, ct);
         return await GetByIdAsync(screening.Id, ct);
     }
 
@@ -74,11 +88,19 @@ public sealed class ScreeningService(IUnitOfWork uow, IMapper mapper, ITwoLevelC
         activity?.SetTag("screening.id", id);
         activity?.SetTag("screening.price", input.BasePrice);
         var screening = await uow.Screenings.GetByIdAsync(id, ct) ?? throw EntityNotFoundException.For<Screening>(id);
+        var oldPrice = screening.BasePrice;
         screening.ChangePrice(input.BasePrice);                 // скасований сеанс → DomainException → 409
-        await uow.SaveChangesAsync(ct);
+        await uow.SaveChangesAsync(ct);                         // 1) зміни збережено
         await InvalidateAsync(id, screening.MovieId, "ScreeningPriceChanged", ct);
         logger.LogInformation("Сеанс {ScreeningId}: нова ціна {Price}", id, input.BasePrice);
-        return await GetByIdAsync(id, ct);
+
+        var changed = await GetByIdAsync(id, ct);
+        if (oldPrice != changed.BasePrice)                      // 2) лише тоді — подія (і лише якщо ціна справді змінилася)
+            await events.PublishAsync(
+                new ScreeningPriceChangedEvent(id, changed.MovieId, changed.MovieTitle, oldPrice, changed.BasePrice)
+                { CorrelationId = CorrelationContext.Current },
+                CatalogEvents.Exchange, CatalogEvents.RoutingKeys.ScreeningPriceChanged, ct);
+        return changed;
     }
 
     public async Task CancelAsync(long id, CancellationToken ct)
@@ -87,9 +109,15 @@ public sealed class ScreeningService(IUnitOfWork uow, IMapper mapper, ITwoLevelC
         activity?.SetTag("screening.id", id);
         var screening = await uow.Screenings.GetByIdAsync(id, ct) ?? throw EntityNotFoundException.For<Screening>(id);
         screening.Cancel();                                     // повторне скасування → DomainException → 409
-        await uow.SaveChangesAsync(ct);
+        await uow.SaveChangesAsync(ct);                         // 1) зміни збережено
         await InvalidateAsync(id, screening.MovieId, "ScreeningCancelled", ct);
         logger.LogInformation("Сеанс {ScreeningId} скасовано, статус {Status}", id, "Cancelled");
+
+        var cancelled = await GetByIdAsync(id, ct);             // 2) лише тоді — подія
+        await events.PublishAsync(
+            new ScreeningCancelledEvent(id, cancelled.MovieId, cancelled.MovieTitle, cancelled.StartsAt)
+            { CorrelationId = CorrelationContext.Current },
+            CatalogEvents.Exchange, CatalogEvents.RoutingKeys.ScreeningCancelled, ct);
     }
 
     /// <summary>Синхронно із записом: сеанс, картка його фільму і всі сторінки розкладу.</summary>

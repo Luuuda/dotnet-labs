@@ -14,5 +14,7 @@
   <ItemGroup>
     <ProjectReference Include="..\CatalogService.Dal\CatalogService.Dal.csproj" />
     <ProjectReference Include="..\CatalogService.Domain\CatalogService.Domain.csproj" />
+    <!-- Лаб. 08: IEventPublisher, базовий IntegrationEvent, CorrelationContext -->
+    <ProjectReference Include="..\..\..\Platform.Messaging\Platform.Messaging.csproj" />
   </ItemGroup>
 </Project>
