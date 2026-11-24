@@ -1,4 +1,4 @@
-using Platform.Messaging;
+using Platform.EventBus;
 
 namespace Reviews.WebApi.IntegrationEvents;
 

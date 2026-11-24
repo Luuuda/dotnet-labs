@@ -3,11 +3,13 @@ using System.Reflection;
 using System.Text;
 using CatalogService.Api.Grpc;
 using CatalogService.Api.HealthChecks;
+using CatalogService.Api.IntegrationEvents;
 using CatalogService.Api.Infrastructure;
 using CatalogService.Api.Metrics;
 using CatalogService.Bll.Caching;
 using CatalogService.Bll;
-using Platform.Messaging;
+using CatalogService.Bll.Services;
+using Platform.EventBus;
 using Platform.ServiceDefaults;
 using Platform.ServiceDefaults.Grpc;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
@@ -91,19 +93,18 @@ builder.Services.AddGrpcHealthChecks(o =>
 
 // --- Лаб. 08: RabbitMQ — публікація інтеграційних подій Каталогу (IEventPublisher, exchange catalog-events) --------
 // IConnection реєструє Aspire-інтеграція (ConnectionStrings:messaging від AppHost); один канал публікації з publisher
-// confirms на сервіс (Singleton). Трасування публікації — Platform.Messaging (span Producer + traceparent).
+// confirms на сервіс (Singleton). Трасування публікації — Platform.EventBus (span Producer + traceparent).
 // Без брокера (тести, окремий запуск) події лише логуються (LoggingOnlyEventPublisher).
 if (builder.Configuration.GetConnectionString("messaging") is { Length: > 0 })
 {
     builder.AddRabbitMQClient("messaging", settings => settings.DisableTracing = true);   // IConnection + health check «RabbitMQ.Client»
-    builder.Services.AddSingleton<RabbitMqEventPublisher>();
-    builder.Services.AddSingleton<IEventPublisher>(sp => new CatalogService.Bll.IntegrationEvents.AfterCommitEventPublisher(
-        sp.GetRequiredService<RabbitMqEventPublisher>(),
-        sp.GetRequiredService<ILogger<CatalogService.Bll.IntegrationEvents.AfterCommitEventPublisher>>()));
+    builder.Services.AddSingleton<IEventPublisher, RabbitMqEventPublisher>();
     builder.Services.AddRabbitMqToReadiness(HealthTags.Ready);   // перевірку Aspire — у /health/ready зі статусом Degraded
 }
 else
     builder.Services.AddSingleton<IEventPublisher, LoggingOnlyEventPublisher>();
+// Publisher подій Каталогу (IntegrationEvents/): бізнес-сервіси BLL викликають його після SaveChangesAsync
+builder.Services.AddSingleton<ICatalogIntegrationEventService, CatalogIntegrationEventService>();
 
 // --- Лаб. 07: бізнес-метрики (Metrics/, Meter «CatalogService.Api») ------------------------------------------------
 builder.Services.AddSingleton<CatalogMetrics>();

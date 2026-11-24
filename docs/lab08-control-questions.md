@@ -28,7 +28,7 @@ Eventual consistency (узгодженість у кінцевому підсу�
 
 ## 3. Чому domain events мають бути незмінними і самодостатніми?
 
-* **Незмінні** (`record` з `init`-властивостями, [Platform.Messaging/IntegrationEvent.cs](../Platform.Messaging/IntegrationEvent.cs)): подія описує факт, що вже стався, тому й назви в минулому часі. Факт не можна «виправити»: якщо ціну змінили ще раз, це нова подія з новим `EventId`. Незмінність дає ще й безпеку. Ту саму подію серіалізують, логують, повторюють і відправляють у DLQ, і всюди вона однакова. `EventId` стабільний, тож за ним працює ідемпотентність.
+* **Незмінні** (`record` з `init`-властивостями, [Platform.EventBus/IntegrationEvent.cs](../Platform.EventBus/IntegrationEvent.cs)): подія описує факт, що вже стався, тому й назви в минулому часі. Факт не можна «виправити»: якщо ціну змінили ще раз, це нова подія з новим `EventId`. Незмінність дає ще й безпеку. Ту саму подію серіалізують, логують, повторюють і відправляють у DLQ, і всюди вона однакова. `EventId` стабільний, тож за ним працює ідемпотентність.
 * **Самодостатні**: `ScreeningScheduledEvent` містить усе, що потрібно Бронюванню, — фільм, назву, залу, розмір зали, час і ціну. Якби подія мала лише `ScreeningId`, споживач мусив би синхронно звертатися до Каталогу. Тоді повернулася б часова залежність, від якої подія мала звільнити: Каталог недоступний — обробка стоїть. А ще за час між подією і зверненням дані могли змінитися, і споживач прочитав би не той стан, про який подія.
 
 ## 4. Як працює publish-subscribe у RabbitMQ? Яка роль exchange, queue і binding?
@@ -37,7 +37,7 @@ Eventual consistency (узгодженість у кінцевому підсу�
 * **Queue** — буфер повідомлень одного сервісу-споживача: `booking.catalog-sync`, `reviews.catalog-sync` (durable). Кілька екземплярів одного сервісу читають ту саму чергу й ділять повідомлення між собою (competing consumers). Різні сервіси мають різні черги й отримують кожен свою копію (fan-out).
 * **Binding** — правило «exchange → черга» з шаблоном ключа (`*` — одне слово, `#` — будь-яка кількість). `booking.catalog-sync` прив'язана шаблонами `screening.*` і `movie.*`, `reviews.catalog-sync` — лише `movie.*`, тому події сеансів у Відгуки не потрапляють.
 
-Топологію оголошує кожен сервіс під час старту ([EventTopology.cs](../Platform.Messaging/EventTopology.cs)). Повторне оголошення з тими самими параметрами безпечне, тож порядок запуску сервісів не важливий. Скріни: [exchanges](lab08/rabbitmq-exchanges.png), [bindings catalog-events](lab08/rabbitmq-catalog-events-bindings.png), [черги](lab08/rabbitmq-queues.png).
+Топологію оголошує кожен сервіс під час старту ([EventTopology.cs](../Platform.EventBus/EventTopology.cs)). Повторне оголошення з тими самими параметрами безпечне, тож порядок запуску сервісів не важливий. Скріни: [exchanges](lab08/rabbitmq-exchanges.png), [bindings catalog-events](lab08/rabbitmq-catalog-events-bindings.png), [черги](lab08/rabbitmq-queues.png).
 
 ## 5. Що таке ідемпотентність і чому вона обов'язкова для consumers?
 
@@ -45,16 +45,16 @@ Eventual consistency (узгодженість у кінцевому підсу�
 
 Реалізація:
 
-* **Бронювання** ([CatalogSyncHandlerBase.cs](../Services/Booking/BookingService.Bll/IntegrationEvents/Handlers/CatalogSyncHandlerBase.cs)): `BEGIN TRAN → INSERT dbo.ProcessedEvents(EventId) → UPDATE dbo.Screenings → COMMIT`. `EventId` — PRIMARY KEY, тож повтор дає помилку 2627, і `TryAddAsync` повертає `false`. Перевірка й запис — одна атомарна операція, тож дві паралельні доставки не пройдуть обидві. Якщо оновлення впало, відкочується і запис `EventId`, і повтор обробить подію заново.
+* **Бронювання** ([CatalogSyncHandlerBase.cs](../Services/Booking/BookingService.Api/IntegrationEvents/Handlers/CatalogSyncHandlerBase.cs)): `BEGIN TRAN → INSERT dbo.ProcessedEvents(EventId) → UPDATE dbo.Screenings → COMMIT`. `EventId` — PRIMARY KEY, тож повтор дає помилку 2627, і `TryAddAsync` повертає `false`. Перевірка й запис — одна атомарна операція, тож дві паралельні доставки не пройдуть обидві. Якщо оновлення впало, відкочується і запис `EventId`, і повтор обробить подію заново.
 * **Відгуки** ([SyncMovieTitle.cs](../Services/Reviews/Reviews.Application/Movies/Commands/SyncMovieTitle.cs)): MongoDB standalone, без транзакцій. Тому спершу йде сама зміна, яка ідемпотентна за природою (`updateMany` з фільтром `movieTitle ≠ нова назва`), а вже потім запис у `processedEvents` (`_id = EventId`).
 
 На демонстрації ту саму подію опубліковано двічі, у другій копії тіло мало ціну 999. Друга обробка в логах — `Duplicate … пропущено`, ціна не змінилася ([логи](lab08/logs-duplicate.png)).
 
 ## 6. Як гарантувати, що подія буде опублікована лише після успішного збереження в БД і не загубиться? Що таке Transactional Outbox?
 
-Перша половина в коді: у кожній бізнес-операції Каталогу спершу `await uow.SaveChangesAsync(ct)`, лише потім `await events.PublishAsync(...)` ([ScreeningService.cs](../Services/Catalog/CatalogService.Bll/Services/ScreeningService.cs), [MovieService.cs](../Services/Catalog/CatalogService.Bll/Services/MovieService.cs)). Якщо збереження кинуло виняток (409 конкурентності, порушення правила), до публікації виконання не доходить. Це перевіряє тест `Failed_save_publishes_nothing`. Publisher чекає підтвердження брокера (publisher confirms), повідомлення persistent, exchange і черги durable: прийнята брокером подія переживе його перезапуск.
+Перша половина в коді: у кожній бізнес-операції Каталогу спершу `await uow.SaveChangesAsync(ct)`, лише потім `await integrationEvents.Publish…Async(...)` → `IEventPublisher.PublishAsync` ([ScreeningService.cs](../Services/Catalog/CatalogService.Bll/Services/ScreeningService.cs), [MovieService.cs](../Services/Catalog/CatalogService.Bll/Services/MovieService.cs)). Якщо збереження кинуло виняток (409 конкурентності, порушення правила), до публікації виконання не доходить. Це перевіряє тест `Failed_save_publishes_nothing`. Publisher чекає підтвердження брокера (publisher confirms), повідомлення persistent, exchange і черги durable: прийнята брокером подія переживе його перезапуск.
 
-Залишається вікно між COMMIT і публікацією: якщо процес упаде або брокер недоступний саме тоді, зміна збережена, а подію втрачено. Зараз така помилка логується з `EventId`, типом, routing key і `CorrelationId` ([AfterCommitEventPublisher.cs](../Services/Catalog/CatalogService.Bll/IntegrationEvents/AfterCommitEventPublisher.cs)), а клієнт отримує 200, бо зміна справді відбулася.
+Залишається вікно між COMMIT і публікацією: якщо процес упаде або брокер недоступний саме тоді, зміна збережена, а подію втрачено. Зараз така помилка логується з `EventId`, типом, routing key і `CorrelationId` ([CatalogIntegrationEventService.cs](../Services/Catalog/CatalogService.Api/IntegrationEvents/CatalogIntegrationEventService.cs)), а клієнт отримує 200, бо зміна справді відбулася.
 
 **Transactional Outbox** закриває це вікно. Подія пишеться в таблицю `OutboxMessages` у **тій самій транзакції БД**, що й зміна: або обидва записи є, або жодного. Окремий фоновий процес (relay) читає неопубліковані записи, публікує їх у брокер і позначає опублікованими. Якщо він упаде після публікації, але до позначки, подія піде ще раз. Це той самий at-least-once, який вже покриває ідемпотентність споживачів. Так зроблено в eShop (`IntegrationEventLogEF`) і в MassTransit (EF Core outbox). У платформі outbox не реалізовано, це наступний крок.
 
@@ -76,11 +76,11 @@ DLX — звичайний exchange, у який RabbitMQ перекладає �
 * немає лічильника: споживач не знає, яка це спроба (`redelivered` — лише прапорець «вже доставлялося»), тож не може зупинитися після N спроб;
 * немає паузи: повідомлення миттєво приходить знову, і «отруйне» повідомлення (poison message) крутиться в нескінченному циклі, навантажуючи процесор, логи й БД і блокуючи чергу.
 
-Тому споживач ([IntegrationEventConsumer.cs](../Platform.Messaging/IntegrationEventConsumer.cs)) після паузи 1 → 2 → 4 с публікує **копію** з `x-retry-count + 1` через default exchange прямо у свою чергу. Не в `catalog-events`, бо тоді повтор отримали б і інші сервіси. Оригінал підтверджується (`BasicAck`). Коли `x-retry-count` досяг 3 — `BasicNack(requeue: false)` → DLQ. `MessageId = EventId` у копії той самий, тому ідемпотентність працює і для повторів. На демонстрації (SQL Server призупинено) — `Retry 1/3`, `2/3`, `3/3`, потім успішна обробка ([логи](lab08/logs-retry.png)).
+Тому споживач ([IntegrationEventConsumer.cs](../Platform.EventBus/IntegrationEventConsumer.cs)) після паузи 1 → 2 → 4 с публікує **копію** з `x-retry-count + 1` через default exchange прямо у свою чергу. Не в `catalog-events`, бо тоді повтор отримали б і інші сервіси. Оригінал підтверджується (`BasicAck`). Коли `x-retry-count` досяг 3 — `BasicNack(requeue: false)` → DLQ. `MessageId = EventId` у копії той самий, тому ідемпотентність працює і для повторів. На демонстрації (SQL Server призупинено) — `Retry 1/3`, `2/3`, `3/3`, потім успішна обробка ([логи](lab08/logs-retry.png)).
 
 ## 9. Як контекст трасування передається через брокер повідомлень?
 
-Так само, як через HTTP: заголовком W3C `traceparent` (+ `tracestate`, `baggage`), тільки в заголовках AMQP-повідомлення ([TracePropagation.cs](../Platform.Messaging/TracePropagation.cs)).
+Так само, як через HTTP: заголовком W3C `traceparent` (+ `tracestate`, `baggage`), тільки в заголовках AMQP-повідомлення ([TracePropagation.cs](../Platform.EventBus/TracePropagation.cs)).
 
 1. Publisher створює span `catalog-events publish` (`ActivityKind.Producer`, теги `messaging.system=rabbitmq`, `messaging.destination.name`, `messaging.rabbitmq.destination.routing_key`, `messaging.message.id`). `Propagators.DefaultTextMapPropagator.Inject` записує його контекст у `BasicProperties.Headers`.
 2. Споживач читає заголовки (значення приходять як `byte[]`), `Extract` відновлює `ActivityContext` і baggage (у ньому `CorrelationId`). Span `booking.catalog-sync process` (`ActivityKind.Consumer`) стає нащадком span публікації.

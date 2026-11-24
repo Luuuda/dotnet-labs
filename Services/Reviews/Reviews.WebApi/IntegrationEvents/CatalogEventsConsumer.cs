@@ -1,9 +1,8 @@
-using Reviews.WebApi.IntegrationEvents;
-using Platform.Messaging;
+using Platform.EventBus;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 
-namespace Reviews.WebApi.Messaging;
+namespace Reviews.WebApi.IntegrationEvents;
 
 /// <summary>
 /// Лаб. 08: споживач подій Каталогу у Відгуках — BackgroundService, що живе весь час роботи сервісу.

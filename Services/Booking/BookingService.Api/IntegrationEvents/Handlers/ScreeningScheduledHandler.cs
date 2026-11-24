@@ -2,9 +2,9 @@ using BookingService.Bll.Caching;
 using BookingService.Dal.Abstractions;
 using BookingService.Domain.Models;
 using Microsoft.Extensions.Logging;
-using Platform.Messaging;
+using Platform.EventBus;
 
-namespace BookingService.Bll.IntegrationEvents.Handlers;
+namespace BookingService.Api.IntegrationEvents.Handlers;
 
 /// <summary>Новий сеанс у Каталозі → копія в dbo.Screenings (з розміром зали — для перевірки місць).</summary>
 public sealed class ScreeningScheduledHandler(IUnitOfWork uow, ITwoLevelCache cache, ILogger<ScreeningScheduledHandler> logger)

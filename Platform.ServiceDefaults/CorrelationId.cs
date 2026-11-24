@@ -16,7 +16,7 @@ public sealed class CorrelationIdMiddleware(RequestDelegate next, ILogger<Correl
     public const string HeaderName = "X-Correlation-Id";
     public const string TraceHeaderName = "X-Trace-Id";
     public const string ItemKey = "CorrelationId";
-    /// <summary>Ключ у Baggage — той самий, що Platform.Messaging.CorrelationContext.BaggageKey.</summary>
+    /// <summary>Ключ у Baggage — той самий, що Platform.EventBus.CorrelationContext.BaggageKey.</summary>
     public const string BaggageKey = "correlation.id";
 
     public async Task InvokeAsync(HttpContext context)
@@ -33,7 +33,7 @@ public sealed class CorrelationIdMiddleware(RequestDelegate next, ILogger<Correl
         context.Items[ItemKey] = correlationId;
         Activity.Current?.SetTag("correlation.id", correlationId);
         // Лаб. 08: CorrelationId — і в OpenTelemetry Baggage: BLL бере його звідти для інтеграційної події
-        // (Platform.Messaging.CorrelationContext) без залежності від HttpContext, а publisher передає далі брокером.
+        // (Platform.EventBus.CorrelationContext) без залежності від HttpContext, а publisher передає далі брокером.
         Baggage.SetBaggage(BaggageKey, correlationId);
         var traceId = Activity.Current?.TraceId.ToString();
         // Заголовки ставимо перед відправкою відповіді і ПЕРЕЗАПИСУЄМО: у Gateway YARP копіює такі самі заголовки

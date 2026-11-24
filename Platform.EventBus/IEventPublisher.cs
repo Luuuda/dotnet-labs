@@ -1,4 +1,4 @@
-namespace Platform.Messaging;
+namespace Platform.EventBus;
 
 /// <summary>
 /// Публікація інтеграційних подій. Викликається ЛИШЕ після успішного збереження змін у БД:

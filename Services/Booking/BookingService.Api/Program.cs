@@ -4,11 +4,12 @@ using System.Text;
 using BookingService.Api.Grpc;
 using BookingService.Api.HealthChecks;
 using BookingService.Api.Infrastructure;
-using BookingService.Api.Messaging;
+using BookingService.Api.IntegrationEvents;
+using BookingService.Api.IntegrationEvents.Handlers;
 using BookingService.Api.Metrics;
 using BookingService.Bll.Caching;
 using BookingService.Bll;
-using Platform.Messaging;
+using Platform.EventBus;
 using Platform.ServiceDefaults;
 using Platform.ServiceDefaults.Grpc;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
@@ -95,11 +96,16 @@ builder.Services.AddGrpcHealthChecks(o =>
     o.UseHealthChecksCache = false;
 });
 
-// --- Лаб. 08: RabbitMQ — споживач подій Каталогу (Messaging/CatalogEventsConsumer) ------------------------------
+// --- Лаб. 08: RabbitMQ — споживач подій Каталогу (IntegrationEvents/: події, обробники, CatalogEventsConsumer) -----
 // IConnection реєструє Aspire-інтеграція: рядок ConnectionStrings:messaging передає AppHost (WithReference(rabbitmq)).
-// Трасування повідомлень робить Platform.Messaging (span-и Producer / Consumer, W3C traceparent у заголовках),
+// Трасування повідомлень робить Platform.EventBus (span-и Producer / Consumer, W3C traceparent у заголовках),
 // тому вбудоване трасування клієнта вимкнено — без дубльованих span-ів. Health check реєструє Aspire.
 // Без брокера (тести, окремий запуск) споживач не реєструється.
+// По одному обробнику на тип події (Scoped: свій Unit of Work на кожне повідомлення)
+builder.Services.AddScoped<IIntegrationEventHandler<ScreeningScheduledEvent>, ScreeningScheduledHandler>();
+builder.Services.AddScoped<IIntegrationEventHandler<ScreeningPriceChangedEvent>, ScreeningPriceChangedHandler>();
+builder.Services.AddScoped<IIntegrationEventHandler<ScreeningCancelledEvent>, ScreeningCancelledHandler>();
+builder.Services.AddScoped<IIntegrationEventHandler<MovieRenamedEvent>, MovieRenamedHandler>();
 if (builder.Configuration.GetConnectionString("messaging") is { Length: > 0 })
 {
     builder.AddRabbitMQClient("messaging", settings => settings.DisableTracing = true);   // IConnection + health check «RabbitMQ.Client»

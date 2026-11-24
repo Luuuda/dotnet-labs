@@ -7,7 +7,7 @@ using Microsoft.Extensions.Logging;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 
-namespace Platform.Messaging;
+namespace Platform.EventBus;
 
 /// <summary>
 /// Базовий споживач інтеграційних подій (Лаб. 08, Частина 3). Сервіс-споживач успадковує його як BackgroundService,

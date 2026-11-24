@@ -30,7 +30,7 @@ var redis = builder.AddRedis("redis")
 
 // ---------- Лаб. 08: RabbitMQ — брокер повідомлень для подієвої взаємодії сервісів ----------
 // Каталог публікує інтеграційні події в exchange catalog-events, Бронювання і Відгуки споживають їх зі своїх черг
-// (топологію оголошують самі сервіси під час старту — Platform.Messaging/EventTopology).
+// (топологію оголошують самі сервіси під час старту — Platform.EventBus/EventTopology).
 // WithDataVolume: durable exchange / черги і persistent-повідомлення переживають перезапуск брокера.
 // WithManagementPlugin: Management UI на http://localhost:15672 (exchanges, queues, bindings, DLQ, повідомлення).
 // Користувач і пароль — параметри Aspire (згенерований messaging-password зберігається

@@ -2,7 +2,7 @@ using BookingService.Bll.Caching;
 using BookingService.Dal.Abstractions;
 using Microsoft.Extensions.Logging;
 
-namespace BookingService.Bll.IntegrationEvents.Handlers;
+namespace BookingService.Api.IntegrationEvents.Handlers;
 
 /// <summary>Сеанс скасовано в Каталозі → IsActive = 0 у копії: нові бронювання на нього відхиляються.</summary>
 public sealed class ScreeningCancelledHandler(IUnitOfWork uow, ITwoLevelCache cache, ILogger<ScreeningCancelledHandler> logger)

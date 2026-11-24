@@ -1,9 +1,9 @@
 using BookingService.Bll.Caching;
 using BookingService.Dal.Abstractions;
 using Microsoft.Extensions.Logging;
-using Platform.Messaging;
+using Platform.EventBus;
 
-namespace BookingService.Bll.IntegrationEvents.Handlers;
+namespace BookingService.Api.IntegrationEvents.Handlers;
 
 /// <summary>
 /// Спільна схема ідемпотентного обробника Бронювання (Лаб. 08, Частина 3.3):

@@ -1,4 +1,4 @@
-namespace Platform.Messaging;
+namespace Platform.EventBus;
 
 /// <summary>
 /// Обробник одного типу інтеграційної події. Споживач створює для кожного повідомлення окремий DI-scope

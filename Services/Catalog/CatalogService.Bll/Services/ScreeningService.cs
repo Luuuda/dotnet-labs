@@ -1,23 +1,22 @@
 using AutoMapper;
 using CatalogService.Bll.Caching;
 using CatalogService.Bll.Dtos;
-using CatalogService.Bll.IntegrationEvents;
 using CatalogService.Bll.Specifications;
 using CatalogService.Dal.Abstractions;
 using CatalogService.Domain.Entities;
 using CatalogService.Domain.Exceptions;
 using Microsoft.Extensions.Logging;
-using Platform.Messaging;
 
 namespace CatalogService.Bll.Services;
 
 /// <summary>
 /// Розклад. Лаб. 06: сеанс і сторінки розкладу читаються через дворівневий кеш, запис інвалідує їх синхронно.
 /// Лаб. 08: кожна операція запису після успішного SaveChangesAsync публікує інтеграційну подію в catalog-events
-/// (ScreeningScheduled / ScreeningPriceChanged / ScreeningCancelled). Якщо збереження не вдалося (виняток, 409),
+/// (ScreeningScheduled / ScreeningPriceChanged / ScreeningCancelled) через ICatalogIntegrationEventService (реалізація —
+/// CatalogService.Api/IntegrationEvents). Якщо збереження не вдалося (виняток, 409),
 /// до публікації виконання не доходить — подія про зміну, якої немає, не з'явиться.
 /// </summary>
-public sealed class ScreeningService(IUnitOfWork uow, IMapper mapper, ITwoLevelCache cache, IEventPublisher events,
+public sealed class ScreeningService(IUnitOfWork uow, IMapper mapper, ITwoLevelCache cache, ICatalogIntegrationEventService integrationEvents,
     ILogger<ScreeningService> logger) : IScreeningService
 {
     public async Task<PagedResult<ScreeningDto>> GetListAsync(ScreeningQuery query, CancellationToken ct)
@@ -74,11 +73,7 @@ public sealed class ScreeningService(IUnitOfWork uow, IMapper mapper, ITwoLevelC
         logger.LogInformation("Заплановано сеанс {ScreeningId}: фільм {MovieId}, зала {HallId}, {StartsAt}, ціна {Price}",
             screening.Id, movie.Id, hall.Id, screening.StartsAt, screening.BasePrice);
 
-        await events.PublishAsync(                                          // 2) лише тоді — подія
-            new ScreeningScheduledEvent(screening.Id, movie.Id, movie.Title, hall.Id, hall.Name, hall.RowsCount,
-                hall.SeatsPerRow, screening.StartsAt, screening.Format, screening.BasePrice)
-            { CorrelationId = CorrelationContext.Current },
-            CatalogEvents.Exchange, CatalogEvents.RoutingKeys.ScreeningScheduled, ct);
+        await integrationEvents.PublishScreeningScheduledAsync(screening, movie, hall, ct);   // 2) лише тоді — подія
         return await GetByIdAsync(screening.Id, ct);
     }
 
@@ -96,10 +91,7 @@ public sealed class ScreeningService(IUnitOfWork uow, IMapper mapper, ITwoLevelC
 
         var changed = await GetByIdAsync(id, ct);
         if (oldPrice != changed.BasePrice)                      // 2) лише тоді — подія (і лише якщо ціна справді змінилася)
-            await events.PublishAsync(
-                new ScreeningPriceChangedEvent(id, changed.MovieId, changed.MovieTitle, oldPrice, changed.BasePrice)
-                { CorrelationId = CorrelationContext.Current },
-                CatalogEvents.Exchange, CatalogEvents.RoutingKeys.ScreeningPriceChanged, ct);
+            await integrationEvents.PublishScreeningPriceChangedAsync(changed, oldPrice, ct);
         return changed;
     }
 
@@ -114,10 +106,7 @@ public sealed class ScreeningService(IUnitOfWork uow, IMapper mapper, ITwoLevelC
         logger.LogInformation("Сеанс {ScreeningId} скасовано, статус {Status}", id, "Cancelled");
 
         var cancelled = await GetByIdAsync(id, ct);             // 2) лише тоді — подія
-        await events.PublishAsync(
-            new ScreeningCancelledEvent(id, cancelled.MovieId, cancelled.MovieTitle, cancelled.StartsAt)
-            { CorrelationId = CorrelationContext.Current },
-            CatalogEvents.Exchange, CatalogEvents.RoutingKeys.ScreeningCancelled, ct);
+        await integrationEvents.PublishScreeningCancelledAsync(cancelled, ct);
     }
 
     /// <summary>Синхронно із записом: сеанс, картка його фільму і всі сторінки розкладу.</summary>

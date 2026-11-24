@@ -1,7 +1,7 @@
 using System.Collections.Concurrent;
 using System.Diagnostics.Metrics;
 
-namespace Platform.Messaging;
+namespace Platform.EventBus;
 
 /// <summary>
 /// Метрики обміну повідомленнями (Meter «Platform.Messaging», підключено в ServiceDefaults через AddMeter):

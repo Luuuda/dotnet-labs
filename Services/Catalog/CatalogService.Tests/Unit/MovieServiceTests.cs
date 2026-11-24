@@ -1,5 +1,5 @@
 using CatalogService.Bll.Dtos;
-using CatalogService.Bll.IntegrationEvents;
+using CatalogService.Api.IntegrationEvents;
 using CatalogService.Bll.Services;
 using CatalogService.Dal.Abstractions;
 using CatalogService.Domain.Entities;
@@ -21,7 +21,8 @@ public sealed class MovieServiceTests
     {
         _uow.SetupGet(u => u.Movies).Returns(_movies.Object);
         _uow.SetupGet(u => u.Genres).Returns(_genres.Object);
-        _service = new MovieService(_uow.Object, MappingTests.CreateMapper(), TimeProvider.System, TestCache.Create(), _events,
+        _service = new MovieService(_uow.Object, MappingTests.CreateMapper(), TimeProvider.System, TestCache.Create(),
+            new CatalogIntegrationEventService(_events, NullLogger<CatalogIntegrationEventService>.Instance),
             NullLogger<MovieService>.Instance);
     }
 

@@ -24,7 +24,7 @@
   <ItemGroup>
     <!-- Лаб. 05: спільні налаштування платформи (логування, трасування, health checks) -->
     <ProjectReference Include="..\..\..\Platform.ServiceDefaults\Platform.ServiceDefaults.csproj" />
-    <ProjectReference Include="..\..\..\Platform.Messaging\Platform.Messaging.csproj" />
+    <ProjectReference Include="..\..\..\Platform.EventBus\Platform.EventBus.csproj" />
     <ProjectReference Include="..\Reviews.Application\Reviews.Application.csproj" />
     <ProjectReference Include="..\Reviews.Infrastructure\Reviews.Infrastructure.csproj" />
   </ItemGroup>

@@ -1,6 +1,6 @@
 using OpenTelemetry;
 
-namespace Platform.Messaging;
+namespace Platform.EventBus;
 
 /// <summary>
 /// Поточний CorrelationId (Лаб. 05) без залежності від HttpContext: middleware CorrelationId кладе його в

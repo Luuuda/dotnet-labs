@@ -1,10 +1,10 @@
-using Platform.Messaging;
+using Platform.EventBus;
 
-namespace CatalogService.Bll.IntegrationEvents;
+namespace CatalogService.Api.IntegrationEvents;
 
 // Лаб. 08: інтеграційні події Каталогу — незмінні record-и з назвами в минулому часі. Кожна самодостатня:
 // містить усе, що потрібно споживачам для оновлення своїх копій, тож до Каталогу по додаткові дані не звертаються.
-// EventId, OccurredAt, CorrelationId і SchemaVersion — з базового IntegrationEvent (Platform.Messaging).
+// EventId, OccurredAt, CorrelationId і SchemaVersion — з базового IntegrationEvent (Platform.EventBus).
 // Правило сумісності: нові поля додаються, наявні не перейменовуються й не видаляються.
 
 /// <summary>
