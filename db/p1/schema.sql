@@ -304,4 +304,25 @@ WHEN NOT MATCHED BY TARGET THEN INSERT (FromStatus, ToStatus) VALUES (s.FromStat
 WHEN NOT MATCHED BY SOURCE THEN DELETE;
 GO
 
+/* ---------- Лаб. 08 (оновлення схеми): час останньої застосованої зміни полів копії сеансу ----------
+   Події з Каталогу можуть прийти не в тому порядку, в якому сталися (повтор після тимчасової помилки
+   повертається в кінець черги). Окремий час для ціни і для назви: подія застосовується, лише якщо вона
+   новіша (OccurredAt) за вже застосовану зміну ЦЬОГО поля — стара подія не перезапише свіжу ціну / назву. */
+IF COL_LENGTH(N'dbo.Screenings', N'PriceSyncedAt') IS NULL
+    ALTER TABLE dbo.Screenings ADD PriceSyncedAt DATETIME2(3) NULL, TitleSyncedAt DATETIME2(3) NULL;
+GO
+
+/* ---------- Лаб. 08 (оновлення схеми) ProcessedEvents: оброблені інтеграційні події ----------
+   Ідемпотентність споживача: EventId події з Каталогу записується в ТІЙ САМІЙ транзакції, що й оновлення
+   копії dbo.Screenings. Повторна доставка (RabbitMQ гарантує «щонайменше один раз») → порушення PRIMARY KEY
+   (помилка 2627) → обробку пропущено. EventType і ProcessedAt — для розбору інцидентів. */
+IF OBJECT_ID(N'dbo.ProcessedEvents', N'U') IS NULL
+CREATE TABLE dbo.ProcessedEvents (
+    EventId     UNIQUEIDENTIFIER NOT NULL,
+    EventType   NVARCHAR(100)    NOT NULL,
+    ProcessedAt DATETIME2(3)     NOT NULL CONSTRAINT DF_ProcessedEvents_ProcessedAt DEFAULT SYSUTCDATETIME(),
+    CONSTRAINT PK_ProcessedEvents PRIMARY KEY CLUSTERED (EventId)
+);
+GO
+
 PRINT N'CinemaBooking: схему створено.';

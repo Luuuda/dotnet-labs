@@ -24,6 +24,7 @@ public sealed partial class DatabaseBootstrapper(string connectionString, ILogge
             if (await check.ExecuteScalarAsync(ct) is not DBNull and not null)
             {
                 logger.LogInformation("База {Database} вже містить схему — скрипти не застосовуються", connection.Database);
+                await EnsureTablesAddedLaterAsync(connection, ct);
                 return;
             }
         }
@@ -40,6 +41,25 @@ public sealed partial class DatabaseBootstrapper(string connectionString, ILogge
             logger.LogInformation("Застосовано {Script}", script);
         }
     }
+
+    /// <summary>
+    /// Лаб. 08: у базі, створеній раніше, може не бути змін, доданих у schema.sql пізніше (dbo.ProcessedEvents,
+    /// стовпці PriceSyncedAt / TitleSyncedAt). Виконуються лише пакети schema.sql з позначкою «Лаб. 08 (оновлення схеми)» —
+    /// вони ідемпотентні (IF OBJECT_ID / COL_LENGTH … IS NULL).
+    /// Джерело схеми одне — db/p1/schema.sql.
+    /// </summary>
+    private async Task EnsureTablesAddedLaterAsync(SqlConnection connection, CancellationToken ct)
+    {
+        foreach (var batch in GoSeparator().Split(ReadScript(Scripts[0]))
+                     .Where(b => b.Contains(UpgradeMarker, StringComparison.Ordinal)))
+        {
+            await using var command = new SqlCommand(batch, connection) { CommandTimeout = 60 };
+            await command.ExecuteNonQueryAsync(ct);
+        }
+        logger.LogInformation("Оновлення схеми Лаб. 08 застосовано: dbo.ProcessedEvents, Screenings.PriceSyncedAt / TitleSyncedAt");
+    }
+
+    private const string UpgradeMarker = "Лаб. 08 (оновлення схеми)";
 
     private static string ReadScript(string name)
     {

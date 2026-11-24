@@ -12,6 +12,7 @@ internal sealed class UnitOfWorkMock
     public Mock<IBookingRepository> Bookings { get; } = new();
     public Mock<IPaymentRepository> Payments { get; } = new();
     public Mock<IPromotionRepository> Promotions { get; } = new();
+    public Mock<IProcessedEventRepository> ProcessedEvents { get; } = new();
 
     public UnitOfWorkMock()
     {
@@ -20,5 +21,6 @@ internal sealed class UnitOfWorkMock
         Uow.SetupGet(u => u.Bookings).Returns(Bookings.Object);
         Uow.SetupGet(u => u.Payments).Returns(Payments.Object);
         Uow.SetupGet(u => u.Promotions).Returns(Promotions.Object);
+        Uow.SetupGet(u => u.ProcessedEvents).Returns(ProcessedEvents.Object);
     }
 }

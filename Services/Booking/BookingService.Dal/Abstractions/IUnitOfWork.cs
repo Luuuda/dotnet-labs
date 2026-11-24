@@ -14,6 +14,8 @@ public interface IUnitOfWork : IAsyncDisposable
     IBookingRepository Bookings { get; }
     IPaymentRepository Payments { get; }
     IPromotionRepository Promotions { get; }
+    /// <summary>Лаб. 08: оброблені інтеграційні події (ідемпотентність споживача).</summary>
+    IProcessedEventRepository ProcessedEvents { get; }
 
     bool HasActiveTransaction { get; }
 

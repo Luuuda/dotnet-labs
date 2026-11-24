@@ -58,6 +58,8 @@ public sealed class IndexCreationService(MongoDbContext context, ILogger<IndexCr
         };
         created = created.Concat(await context.Discussions.Indexes.CreateManyAsync(discussionIndexes, ct)).ToList();
 
+        // Лаб. 08: TTL-індекс оброблених інтеграційних подій (ідемпотентність споживача MovieRenamed)
+        created = created.Append(await IntegrationEventStore.CreateIndexesAsync(context, ct)).ToList();
         logger.LogInformation("Індекси MongoDB перевірено/створено: {Indexes}", created);
     }
 

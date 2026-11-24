@@ -31,4 +31,7 @@ public interface IDiscussionRepository
     Task<Discussion?> GetByIdAsync(ObjectId id, CancellationToken ct = default);
     Task AddAsync(Discussion discussion, CancellationToken ct = default);
     Task UpdateAsync(Discussion discussion, CancellationToken ct = default);
+
+    /// <summary>Лаб. 08: масове оновлення денормалізованої назви фільму в обговореннях (подія MovieRenamed).</summary>
+    Task<long> RenameMovieAsync(int movieId, string movieTitle, CancellationToken ct = default);
 }

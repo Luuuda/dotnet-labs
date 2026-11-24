@@ -43,6 +43,7 @@ public sealed class UnitOfWork : IUnitOfWork
         Bookings = new BookingRepository(_connection, current, commandTimeoutSeconds);     // Dapper
         Payments = new PaymentRepository(_connection, current, commandTimeoutSeconds);     // Dapper
         Promotions = new PromotionRepository(_connection, current, commandTimeoutSeconds); // Dapper
+        ProcessedEvents = new ProcessedEventRepository(_connection, current, commandTimeoutSeconds);   // Лаб. 08
     }
 
     public ICustomerRepository Customers { get; }
@@ -50,6 +51,7 @@ public sealed class UnitOfWork : IUnitOfWork
     public IBookingRepository Bookings { get; }
     public IPaymentRepository Payments { get; }
     public IPromotionRepository Promotions { get; }
+    public IProcessedEventRepository ProcessedEvents { get; }
 
     public bool HasActiveTransaction => _transaction is not null;
 

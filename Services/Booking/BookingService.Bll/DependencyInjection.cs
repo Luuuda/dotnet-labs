@@ -1,10 +1,13 @@
 using BookingService.Bll.Caching;
+using BookingService.Bll.IntegrationEvents;
+using BookingService.Bll.IntegrationEvents.Handlers;
 using BookingService.Bll.Mapping;
 using BookingService.Bll.Services;
 using BookingService.Bll.Validation;
 using BookingService.Dal;
 using BookingService.Dal.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
+using Platform.Messaging;
 
 namespace BookingService.Bll;
 
@@ -31,6 +34,12 @@ public static class DependencyInjection
         services.AddScoped<ICustomerService, CustomerService>();
         services.AddScoped<IScreeningService, ScreeningService>();
         services.AddScoped<IBookingService, BookingsService>();
+
+        // Лаб. 08: по одному обробнику на тип події з Каталогу (Scoped: свій Unit of Work на кожне повідомлення)
+        services.AddScoped<IIntegrationEventHandler<ScreeningScheduledEvent>, ScreeningScheduledHandler>();
+        services.AddScoped<IIntegrationEventHandler<ScreeningPriceChangedEvent>, ScreeningPriceChangedHandler>();
+        services.AddScoped<IIntegrationEventHandler<ScreeningCancelledEvent>, ScreeningCancelledHandler>();
+        services.AddScoped<IIntegrationEventHandler<MovieRenamedEvent>, MovieRenamedHandler>();
         return services;
     }
 
