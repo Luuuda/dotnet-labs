@@ -1,0 +1,31 @@
+<Solution>
+  <Folder Name="/Platform/">
+    <Project Path="Platform.AppHost/Platform.AppHost.csproj" />
+    <Project Path="Platform.ServiceDefaults/Platform.ServiceDefaults.csproj" />
+    <Project Path="Platform.ApiGateway/Platform.ApiGateway.csproj" />
+    <Project Path="Platform.Aggregator/Platform.Aggregator.csproj" />
+    <Project Path="Platform.EventBus/Platform.EventBus.csproj" />
+  </Folder>
+  <Folder Name="/Services/" />
+  <Folder Name="/Services/Booking/">
+    <Project Path="Services/Booking/BookingService.Api/BookingService.Api.csproj" />
+    <Project Path="Services/Booking/BookingService.Bll/BookingService.Bll.csproj" />
+    <Project Path="Services/Booking/BookingService.Dal/BookingService.Dal.csproj" />
+    <Project Path="Services/Booking/BookingService.Domain/BookingService.Domain.csproj" />
+    <Project Path="Services/Booking/BookingService.Tests/BookingService.Tests.csproj" />
+  </Folder>
+  <Folder Name="/Services/Catalog/">
+    <Project Path="Services/Catalog/CatalogService.Api/CatalogService.Api.csproj" />
+    <Project Path="Services/Catalog/CatalogService.Bll/CatalogService.Bll.csproj" />
+    <Project Path="Services/Catalog/CatalogService.Dal/CatalogService.Dal.csproj" />
+    <Project Path="Services/Catalog/CatalogService.Domain/CatalogService.Domain.csproj" />
+    <Project Path="Services/Catalog/CatalogService.Tests/CatalogService.Tests.csproj" />
+  </Folder>
+  <Folder Name="/Services/Reviews/">
+    <Project Path="Services/Reviews/Reviews.Domain/Reviews.Domain.csproj" />
+    <Project Path="Services/Reviews/Reviews.Application/Reviews.Application.csproj" />
+    <Project Path="Services/Reviews/Reviews.Infrastructure/Reviews.Infrastructure.csproj" />
+    <Project Path="Services/Reviews/Reviews.WebApi/Reviews.WebApi.csproj" />
+    <Project Path="Services/Reviews/Reviews.Tests/Reviews.Tests.csproj" />
+  </Folder>
+</Solution>

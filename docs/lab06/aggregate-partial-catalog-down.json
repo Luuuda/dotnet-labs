@@ -1,0 +1,55 @@
+{
+  "booking": {
+    "id": 1,
+    "status": "Issued",
+    "createdAt": "2026-11-20T10:00:00",
+    "totalAmount": 500,
+    "ticketsCount": 2,
+    "contactEmail": "olena.kovalenko@example.com",
+    "channel": "Web"
+  },
+  "sessions": [
+    {
+      "screeningId": 1,
+      "movieTitle": "Дюна: Частина друга",
+      "startsAt": "2026-12-05T16:00:00",
+      "hallName": "IMAX",
+      "seats": [
+        "ряд 7, місце 10",
+        "ряд 7, місце 11"
+      ],
+      "paidAmount": 500,
+      "opinion": {
+        "averageRating": 4.33,
+        "reviewsCount": 3,
+        "topReviews": [
+          {
+            "author": "Олена Коваленко",
+            "rating": 5,
+            "text": "Найкраще, що я бачила в IMAX. Масштаб, звук, кожен кадр — як картина.",
+            "verifiedViewer": true,
+            "createdAt": "2026-11-23T17:53:42.701Z"
+          },
+          {
+            "author": "Марія Бондар",
+            "rating": 4,
+            "text": "Саундтрек і візуал — окреме задоволення.",
+            "verifiedViewer": true,
+            "createdAt": "2026-11-23T17:53:42.704Z"
+          },
+          {
+            "author": "Андрій Шевчук",
+            "rating": 4,
+            "text": "Фінал трохи поспішний, але дуель — топ.",
+            "verifiedViewer": false,
+            "createdAt": "2026-11-23T17:53:42.704Z"
+          }
+        ]
+      }
+    }
+  ],
+  "warnings": [
+    "catalog-api is unavailable: сеанс 1 — дані цього сервісу відсутні у відповіді",
+    "catalog-api is unavailable: фільм 3 — дані цього сервісу відсутні у відповіді"
+  ]
+}

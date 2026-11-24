@@ -1,0 +1,67 @@
+// Контракт gRPC сервісу бронювання (Лаб. 06). Сервер — BookingService.Api, клієнт — Platform.Aggregator.
+// Номери полів після публікації НЕ змінюються.
+syntax = "proto3";
+
+option csharp_namespace = "BookingService.Grpc";
+
+package cinema.booking.v1;
+
+import "google/protobuf/timestamp.proto";
+
+// Читання бронювань і локальних копій сеансів для внутрішніх сервісів.
+service BookingGrpc {
+  // Бронювання з квитками. Неіснуючий Id → NOT_FOUND, Id <= 0 → INVALID_ARGUMENT.
+  rpc GetBooking (GetBookingRequest) returns (BookingReply);
+  // Локальна копія сеансу (є MovieId навіть тоді, коли Каталог недоступний).
+  rpc GetScreening (GetScreeningRequest) returns (ScreeningCopyReply);
+  // Кілька копій сеансів одним викликом; відсутні Id пропускаються.
+  rpc GetScreeningsByIds (GetScreeningsByIdsRequest) returns (ScreeningCopiesReply);
+}
+
+// Гроші: units — ціла частина, nanos — дробова (10^-9).
+message Money {
+  int64 units = 1;
+  int32 nanos = 2;
+  string currency_code = 3;
+}
+
+message GetBookingRequest { int64 id = 1; }
+message GetScreeningRequest { int64 id = 1; }
+message GetScreeningsByIdsRequest { repeated int64 ids = 1; }
+
+message TicketReply {
+  int64 id = 1;
+  int64 screening_id = 2;
+  int32 seat_row = 3;
+  int32 seat_number = 4;
+  string movie_title = 5;                    // знімок на момент бронювання
+  string hall_name = 6;
+  google.protobuf.Timestamp starts_at = 7;   // місцевий час кінотеатру, переданий як UTC без зсуву
+  Money final_price = 8;
+  bool is_cancelled = 9;
+}
+
+message BookingReply {
+  int64 id = 1;
+  string status = 2;                         // Submitted | AwaitingValidation | SeatsConfirmed | Paid | Issued | Cancelled
+  google.protobuf.Timestamp created_at = 3;
+  Money total_amount = 4;
+  optional string channel = 5;
+  optional string contact_email = 6;
+  repeated TicketReply tickets = 7;
+}
+
+message ScreeningCopyReply {
+  int64 id = 1;
+  int32 movie_id = 2;
+  string movie_title = 3;
+  int32 hall_id = 4;
+  string hall_name = 5;
+  int32 rows_count = 6;
+  int32 seats_per_row = 7;
+  google.protobuf.Timestamp starts_at = 8;
+  Money base_price = 9;
+  bool is_active = 10;
+}
+
+message ScreeningCopiesReply { repeated ScreeningCopyReply screenings = 1; }

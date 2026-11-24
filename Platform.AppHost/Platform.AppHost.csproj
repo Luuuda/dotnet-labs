@@ -1,0 +1,26 @@
+<Project Sdk="Aspire.AppHost.Sdk/13.6.5">
+  <!-- Оркестратор платформи (лише конфігурація для розробки, без бізнес-логіки):
+       контейнери SQL Server і MongoDB, три мікросервіси, Aggregator і Gateway — однією командою. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <UserSecretsId>cinema-platform-apphost-lab05</UserSecretsId>
+    <NoWarn>$(NoWarn);ASPIRE010</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Aspire.Hosting.SqlServer" Version="13.6.5" />
+    <PackageReference Include="Aspire.Hosting.MongoDB" Version="13.6.5" />
+    <PackageReference Include="Aspire.Hosting.Redis" Version="13.6.5" />
+    <!-- Лаб. 08: RabbitMQ (контейнер, management plugin, том) -->
+    <PackageReference Include="Aspire.Hosting.RabbitMQ" Version="13.6.5" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- AppHost посилається на всі проєкти; на AppHost не посилається ніхто -->
+    <ProjectReference Include="..\Services\Booking\BookingService.Api\BookingService.Api.csproj" />
+    <ProjectReference Include="..\Services\Catalog\CatalogService.Api\CatalogService.Api.csproj" />
+    <ProjectReference Include="..\Services\Reviews\Reviews.WebApi\Reviews.WebApi.csproj" />
+    <ProjectReference Include="..\Platform.Aggregator\Platform.Aggregator.csproj" />
+    <ProjectReference Include="..\Platform.ApiGateway\Platform.ApiGateway.csproj" />
+    <ProjectReference Include="..\Platform.ServiceDefaults\Platform.ServiceDefaults.csproj" IsAspireProjectResource="false" />
+  </ItemGroup>
+</Project>

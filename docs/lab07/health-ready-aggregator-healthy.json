@@ -1,0 +1,58 @@
+{
+  "status": "Healthy",
+  "totalMs": 14.9,
+  "checks": [
+    {
+      "name": "booking-api",
+      "status": "Healthy",
+      "description": "booking-api: SERVING (gRPC health)",
+      "tags": [
+        "grpc",
+        "downstream",
+        "ready"
+      ],
+      "ms": 7.9,
+      "error": null,
+      "data": null
+    },
+    {
+      "name": "catalog-api",
+      "status": "Healthy",
+      "description": "catalog-api: SERVING (gRPC health)",
+      "tags": [
+        "grpc",
+        "downstream",
+        "ready"
+      ],
+      "ms": 14.8,
+      "error": null,
+      "data": null
+    },
+    {
+      "name": "reviews-api",
+      "status": "Healthy",
+      "description": "reviews-api: SERVING (gRPC health)",
+      "tags": [
+        "grpc",
+        "downstream",
+        "ready"
+      ],
+      "ms": 7.8,
+      "error": null,
+      "data": null
+    },
+    {
+      "name": "redis-cache",
+      "status": "Healthy",
+      "description": null,
+      "tags": [
+        "cache",
+        "redis",
+        "ready"
+      ],
+      "ms": 5.8,
+      "error": null,
+      "data": null
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
+    <PackageReference Include="Moq" Version="4.20.72" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="9.0.*" />
+    <PackageReference Include="Grpc.Tools" Version="2.72.0" PrivateAssets="all" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Лаб. 06: «клієнт» зі зміненим номером поля — для тесту бінарної сумісності protobuf (лише повідомлення, без сервісу) -->
+    <Protobuf Include="Protos\catalog_client_renumbered.proto" GrpcServices="None" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\CatalogService.Api\CatalogService.Api.csproj" />
+    <ProjectReference Include="..\CatalogService.Bll\CatalogService.Bll.csproj" />
+    <ProjectReference Include="..\CatalogService.Dal\CatalogService.Dal.csproj" />
+    <ProjectReference Include="..\CatalogService.Domain\CatalogService.Domain.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,45 @@
+{
+  "status": "Degraded",
+  "totalMs": 11.7,
+  "checks": [
+    {
+      "name": "catalog-db",
+      "status": "Healthy",
+      "description": null,
+      "tags": [
+        "database",
+        "sql",
+        "ready"
+      ],
+      "ms": 3.4,
+      "error": null,
+      "data": null
+    },
+    {
+      "name": "catalog-db-migrations",
+      "status": "Healthy",
+      "description": "Усі міграції EF Core застосовано",
+      "tags": [
+        "database",
+        "ready",
+        "startup"
+      ],
+      "ms": 11.6,
+      "error": null,
+      "data": null
+    },
+    {
+      "name": "redis-cache",
+      "status": "Degraded",
+      "description": null,
+      "tags": [
+        "cache",
+        "redis",
+        "ready"
+      ],
+      "ms": 0.2,
+      "error": "No connection is active/available to service this operation: PING; SocketClosed (ReadEndOfStream, last-recv: 0) on 127.0.0.1:20883/Subscription, Idle/MarkProcessed, last: PING, origin: ReadFromPipe, outstanding: 0, last-read: 0s ago, last-write: 26s ago, keep-alive: 60s, state: ConnectedEstablished, mgr: 8 of 10 available, in: 0, in-pipe: 0, out-pipe: 0, last-heartbeat: 0s ago, last-mbeat: 0s ago, global: 0s ago, v: 2.13.23.1338, mc: 1/1/0, mgr: 10 of 10 available, clientName: DESKTOP-M8LE0N9(SE.Redis-v2.13.23.1338), IOCP: (Busy=0,Free=1000,Min=1,Max=1000), WORKER: (Busy=4,Free=32763,Min=16,Max=32767), POOL: (Threads=5,QueuedItems=0,CompletedItems=3738,Timers=15), v: 2.13.23.1338",
+      "data": null
+    }
+  ]
+}

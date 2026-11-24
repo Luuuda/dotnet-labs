@@ -1,0 +1,49 @@
+{
+  "before": {
+    "id": 1,
+    "movieId": 3,
+    "movieTitle": "Дюна: Частина друга",
+    "hallId": 2,
+    "hallName": "IMAX",
+    "rowsCount": 14,
+    "seatsPerRow": 20,
+    "startsAt": "2026-12-05T16:00:00",
+    "basePrice": 300,
+    "isActive": true,
+    "syncedAt": "2026-11-24T17:10:57.84"
+  },
+  "afterPrice": {
+    "id": 1,
+    "movieId": 3,
+    "movieTitle": "Дюна: Частина друга",
+    "hallId": 2,
+    "hallName": "IMAX",
+    "rowsCount": 14,
+    "seatsPerRow": 20,
+    "startsAt": "2026-12-05T16:00:00",
+    "basePrice": 305,
+    "isActive": true,
+    "syncedAt": "2026-11-24T17:17:23.056"
+  },
+  "ticketsBefore": "1:250, 1:250",
+  "ticketsAfter": "1:250, 1:250",
+  "afterRename": {
+    "id": 3,
+    "movieId": 1,
+    "movieTitle": "Довбуш (режисерська версія)",
+    "hallId": 1,
+    "hallName": "Зала 1",
+    "rowsCount": 10,
+    "seatsPerRow": 12,
+    "startsAt": "2026-12-05T14:00:00",
+    "basePrice": 315,
+    "isActive": true,
+    "syncedAt": "2026-11-24T17:17:26.272"
+  },
+  "reviewsTitles": [
+    "Довбуш (режисерська версія)",
+    "Довбуш (режисерська версія)"
+  ],
+  "priceTrace": "18023a7a540bd795279d96da83dc33a5",
+  "renameTrace": "e950338f41ebe496fc6de30a8d363467"
+}

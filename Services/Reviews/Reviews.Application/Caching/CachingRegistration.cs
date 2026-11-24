@@ -1,0 +1,22 @@
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+
+namespace Reviews.Application.Caching;
+
+public static class CachingRegistration
+{
+    /// <summary>Дворівневий кеш. Сховища (AddMemoryCache зі SizeLimit, AddRedisDistributedCache) реєструє Program.cs.</summary>
+    public static IServiceCollection AddReviewsCaching(this IServiceCollection services)
+    {
+        // Запасні реєстрації (TryAdd): якщо хост не зареєстрував сховища / метрики (unit-тести, консольний запуск),
+        // L1 — пам'ять із SizeLimit, L2 — пам'ять замість Redis. Program.cs реєструє їх раніше, тож вони мають пріоритет.
+        services.AddMemoryCache(o => o.SizeLimit ??= 10_000);   // ліміт розміру завжди є: записи кешу мають Size у КБ
+        services.AddDistributedMemoryCache();
+        services.AddMetrics();
+        services.TryAddSingleton(TimeProvider.System);
+        services.AddSingleton<CacheMetrics>();
+        services.AddSingleton<ITwoLevelCache, TwoLevelCache>();
+        services.AddScoped<IReviewsCacheInvalidator, ReviewsCacheInvalidator>();
+        return services;
+    }
+}

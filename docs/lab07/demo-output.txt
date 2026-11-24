@@ -1,0 +1,101 @@
+### 0. Стан health endpoints (усе запущено)
+  28.0s http://localhost:5180/health/ready -> HTTP 200 Healthy (13 ms) booking-db=Healthy, booking-db-schema=Healthy, redis-cache=Healthy
+  28.0s http://localhost:5280/health/ready -> HTTP 200 Healthy (23 ms) catalog-db=Healthy, catalog-db-migrations=Healthy, redis-cache=Healthy
+  28.1s http://localhost:5380/health/ready -> HTTP 200 Healthy (12 ms) reviews-db=Healthy, reviews-db-indexes=Healthy, redis-cache=Healthy
+  28.1s http://localhost:5400/health/ready -> HTTP 200 Healthy (25 ms) booking-api=Healthy, catalog-api=Healthy, reviews-api=Healthy, redis-cache=Healthy
+  28.1s http://localhost:5180/health/live -> HTTP 200 Healthy (4 ms) self=Healthy
+
+### 1. Бізнес-метрики: кілька бронювань (створення, підтвердження, оплата, скасування, невдалі операції)
+  28.4s POST /api/bookings -> 409 in 301 ms [lab07-booking-create-0]
+   body: {"type":"https://www.rfc-editor.org/rfc/rfc9110#status.409","title":"Конфлікт бізнес-правила","status":409,"detail":"Місця вже зайняті: ряд 4 місце 6","instance":"/api/bookings","traceId":"f61cf5cf9b3b0592bc173b90af575cad","correlationId":"lab07-booking-create-0"}
+  28.4s POST /api/bookings -> 409 in 28 ms [lab07-booking-create-0]
+   body: {"type":"https://www.rfc-editor.org/rfc/rfc9110#status.409","title":"Конфлікт бізнес-правила","status":409,"detail":"Місця вже зайняті: ряд 5 місце 7, ряд 5 місце 8","instance":"/api/bookings","traceId":"6701bdce072d4286dd08e0fee09dec70","correlationId":"lab07-booking-create-0"}
+  28.5s POST /api/bookings -> 409 in 24 ms [lab07-booking-create-0]
+   body: {"type":"https://www.rfc-editor.org/rfc/rfc9110#status.409","title":"Конфлікт бізнес-правила","status":409,"detail":"Місця вже зайняті: ряд 7 місце 5","instance":"/api/bookings","traceId":"e7a2e1fb1efe96f8519aa9b726f699a1","correlationId":"lab07-booking-create-0"}
+  28.8s POST /api/bookings -> 201 in 311 ms [lab07-booking-create-0]
+  28.8s POST /api/bookings -> 409 in 23 ms [lab07-booking-create-1]
+   body: {"type":"https://www.rfc-editor.org/rfc/rfc9110#status.409","title":"Конфлікт бізнес-правила","status":409,"detail":"Місця вже зайняті: ряд 7 місце 3","instance":"/api/bookings","traceId":"1c6c83ad2044f9024f359cc69641e360","correlationId":"lab07-booking-create-1"}
+  28.8s POST /api/bookings -> 409 in 24 ms [lab07-booking-create-1]
+   body: {"type":"https://www.rfc-editor.org/rfc/rfc9110#status.409","title":"Конфлікт бізнес-правила","status":409,"detail":"Місця вже зайняті: ряд 8 місце 2","instance":"/api/bookings","traceId":"65f7981b0a99d2ace84950711fdca78a","correlationId":"lab07-booking-create-1"}
+  28.8s POST /api/bookings -> 409 in 23 ms [lab07-booking-create-1]
+   body: {"type":"https://www.rfc-editor.org/rfc/rfc9110#status.409","title":"Конфлікт бізнес-правила","status":409,"detail":"Місця вже зайняті: ряд 2 місце 7","instance":"/api/bookings","traceId":"11723a211d332d1048c0ee1cd7039c46","correlationId":"lab07-booking-create-1"}
+  28.9s POST /api/bookings -> 201 in 67 ms [lab07-booking-create-1]
+  28.9s POST /api/bookings -> 409 in 24 ms [lab07-booking-create-2]
+   body: {"type":"https://www.rfc-editor.org/rfc/rfc9110#status.409","title":"Конфлікт бізнес-правила","status":409,"detail":"Місця вже зайняті: ряд 3 місце 10","instance":"/api/bookings","traceId":"9a917e23508139b70a7f6d328a0ea7ae","correlationId":"lab07-booking-create-2"}
+  29.0s POST /api/bookings -> 409 in 24 ms [lab07-booking-create-2]
+   body: {"type":"https://www.rfc-editor.org/rfc/rfc9110#status.409","title":"Конфлікт бізнес-правила","status":409,"detail":"Місця вже зайняті: ряд 8 місце 8, ряд 8 місце 9","instance":"/api/bookings","traceId":"69bdc4a932e090aaee273aa10c00fb3e","correlationId":"lab07-booking-create-2"}
+  29.0s POST /api/bookings -> 409 in 21 ms [lab07-booking-create-2]
+   body: {"type":"https://www.rfc-editor.org/rfc/rfc9110#status.409","title":"Конфлікт бізнес-правила","status":409,"detail":"Місця вже зайняті: ряд 1 місце 1, ряд 1 місце 2","instance":"/api/bookings","traceId":"314691f0e7cc3ec5f8350f5d86497c24","correlationId":"lab07-booking-create-2"}
+  29.0s POST /api/bookings -> 409 in 22 ms [lab07-booking-create-2]
+   body: {"type":"https://www.rfc-editor.org/rfc/rfc9110#status.409","title":"Конфлікт бізнес-правила","status":409,"detail":"Місця вже зайняті: ряд 5 місце 1, ряд 5 місце 2","instance":"/api/bookings","traceId":"f552b430e9d3d46951fd5bf5d4e194c6","correlationId":"lab07-booking-create-2"}
+  29.0s POST /api/bookings -> 409 in 22 ms [lab07-booking-create-2]
+   body: {"type":"https://www.rfc-editor.org/rfc/rfc9110#status.409","title":"Конфлікт бізнес-правила","status":409,"detail":"Місця вже зайняті: ряд 7 місце 4, ряд 7 місце 5","instance":"/api/bookings","traceId":"1705b0583c51cdae199e4b14edacfcec","correlationId":"lab07-booking-create-2"}
+  29.0s POST /api/bookings -> 409 in 21 ms [lab07-booking-create-2]
+   body: {"type":"https://www.rfc-editor.org/rfc/rfc9110#status.409","title":"Конфлікт бізнес-правила","status":409,"detail":"Місця вже зайняті: ряд 8 місце 6","instance":"/api/bookings","traceId":"cc2cec2dd2723a98e66ff40b4fb0904a","correlationId":"lab07-booking-create-2"}
+  29.1s POST /api/bookings -> 201 in 94 ms [lab07-booking-create-3]
+  29.2s POST /api/bookings -> 201 in 54 ms [lab07-booking-create-4]
+  29.3s POST /api/bookings -> 201 in 56 ms [lab07-booking-create-5]
+  29.4s POST /api/bookings/40001/confirm -> 204 in 122 ms [lab07-booking-confirm-0]
+  29.5s POST /api/bookings/40001/pay -> 201 in 104 ms [lab07-booking-pay-0]
+  29.5s POST /api/bookings/40002/confirm -> 204 in 68 ms [lab07-booking-confirm-1]
+  29.6s POST /api/bookings/40002/pay -> 201 in 40 ms [lab07-booking-pay-1]
+  29.6s POST /api/bookings/40003/confirm -> 204 in 48 ms [lab07-booking-confirm-2]
+  29.7s POST /api/bookings/40003/pay -> 201 in 38 ms [lab07-booking-pay-2]
+  29.7s POST /api/bookings/40004/confirm -> 204 in 42 ms [lab07-booking-confirm-3]
+  29.7s POST /api/bookings/40001/confirm -> 409 in 29 ms [lab07-booking-confirm-again]
+   body: {"type":"https://www.rfc-editor.org/rfc/rfc9110#status.409","title":"Конфлікт бізнес-правила","status":409,"detail":"Недопустимий перехід статусу: Paid -> SeatsConfirmed (бронювання #40001)","instance":"/api/bookings/40001/confirm","traceId":"99a26c005da762e707c7a6d53707012b","correlationId":"lab07-
+  29.8s POST /api/bookings/999999/cancel -> 404 in 22 ms [lab07-booking-cancel-missing]
+   body: {"type":"https://www.rfc-editor.org/rfc/rfc9110#status.404","title":"Ресурс не знайдено","status":404,"detail":"Бронювання не знайдено","instance":"/api/bookings/999999/cancel","traceId":"41783bc9f3a632a11351780e0d67d5e1","correlationId":"lab07-booking-cancel-missing"}
+
+### 2. reviews-api зупинено з Dashboard на ~8 с: повтори, швидка часткова відповідь, розмикання ланцюга
+  29.9s GET /api/aggregator/movies/3/full?transport=http -> 200 in 10 ms [lab07-before-stop]
+  34.4s Dashboard reviews-api: clicked Остановить ресурс
+  34.4s reviews-api більше не відповідає
+  37.7s GET /api/aggregator/movies/3/full?transport=http -> 200 in 2225 ms warnings=["reviews-api is unavailable: рейтинг фільму 3 — дані цього сервісу відсутні у відповіді","reviews-api is unavailable: відгуки на фільм 3 — дані цього сервісу відсутні у відповіді"] [lab07-reviews-down-http-0]
+  39.9s GET /api/aggregator/movies/3/full -> 200 in 2207 ms warnings=["reviews-api is unavailable: рейтинг фільму 3 — дані цього сервісу відсутні у відповіді","reviews-api is unavailable: відгуки на фільм 3 — дані цього сервісу відсутні у відповіді"] [lab07-reviews-down-grpc-0]
+  42.8s GET /api/aggregator/movies/3/full?transport=http -> 200 in 2164 ms warnings=["reviews-api is unavailable: відгуки на фільм 3 — дані цього сервісу відсутні у відповіді","reviews-api is unavailable: рейтинг фільму 3 — дані цього сервісу відсутні у відповіді"] [lab07-reviews-down-http-1]
+  44.9s GET /api/aggregator/movies/3/full -> 200 in 2129 ms warnings=["reviews-api is unavailable: відгуки на фільм 3 — дані цього сервісу відсутні у відповіді","reviews-api is unavailable: рейтинг фільму 3 — дані цього сервісу відсутні у відповіді"] [lab07-reviews-down-grpc-1]
+  45.6s GET /api/aggregator/movies/3/full?transport=http -> 200 in 14 ms warnings=["reviews-api is unavailable: рейтинг фільму 3 — дані цього сервісу відсутні у відповіді","reviews-api is unavailable: відгуки на фільм 3 — дані цього сервісу відсутні у відповіді"] [lab07-reviews-down-http-2]
+  45.6s GET /api/aggregator/movies/3/full -> 200 in 16 ms warnings=["reviews-api is unavailable: рейтинг фільму 3 — дані цього сервісу відсутні у відповіді","reviews-api is unavailable: відгуки на фільм 3 — дані цього сервісу відсутні у відповіді"] [lab07-reviews-down-grpc-2]
+  46.4s GET /api/aggregator/movies/3/full?transport=http -> 200 in 11 ms warnings=["reviews-api is unavailable: рейтинг фільму 3 — дані цього сервісу відсутні у відповіді","reviews-api is unavailable: відгуки на фільм 3 — дані цього сервісу відсутні у відповіді"] [lab07-reviews-down-http-3]
+  46.4s GET /api/aggregator/movies/3/full -> 200 in 18 ms warnings=["reviews-api is unavailable: рейтинг фільму 3 — дані цього сервісу відсутні у відповіді","reviews-api is unavailable: відгуки на фільм 3 — дані цього сервісу відсутні у відповіді"] [lab07-reviews-down-grpc-3]
+  47.1s GET /api/aggregator/movies/3/full?transport=http -> 200 in 11 ms warnings=["reviews-api is unavailable: рейтинг фільму 3 — дані цього сервісу відсутні у відповіді","reviews-api is unavailable: відгуки на фільм 3 — дані цього сервісу відсутні у відповіді"] [lab07-reviews-down-http-4]
+  47.1s GET /api/aggregator/movies/3/full -> 200 in 13 ms warnings=["reviews-api is unavailable: рейтинг фільму 3 — дані цього сервісу відсутні у відповіді","reviews-api is unavailable: відгуки на фільм 3 — дані цього сервісу відсутні у відповіді"] [lab07-reviews-down-grpc-4]
+  47.8s GET /api/aggregator/movies/3/full?transport=http -> 200 in 13 ms warnings=["reviews-api is unavailable: рейтинг фільму 3 — дані цього сервісу відсутні у відповіді","reviews-api is unavailable: відгуки на фільм 3 — дані цього сервісу відсутні у відповіді"] [lab07-reviews-down-http-5]
+  47.8s GET /api/aggregator/movies/3/full -> 200 in 13 ms warnings=["reviews-api is unavailable: рейтинг фільму 3 — дані цього сервісу відсутні у відповіді","reviews-api is unavailable: відгуки на фільм 3 — дані цього сервісу відсутні у відповіді"] [lab07-reviews-down-grpc-5]
+  48.6s GET /api/aggregator/movies/3/full?transport=http -> 200 in 10 ms warnings=["reviews-api is unavailable: рейтинг фільму 3 — дані цього сервісу відсутні у відповіді","reviews-api is unavailable: відгуки на фільм 3 — дані цього сервісу відсутні у відповіді"] [lab07-reviews-down-http-6]
+  48.6s GET /api/aggregator/movies/3/full -> 200 in 13 ms warnings=["reviews-api is unavailable: рейтинг фільму 3 — дані цього сервісу відсутні у відповіді","reviews-api is unavailable: відгуки на фільм 3 — дані цього сервісу відсутні у відповіді"] [lab07-reviews-down-grpc-6]
+  49.3s GET /api/aggregator/movies/3/full?transport=http -> 200 in 13 ms warnings=["reviews-api is unavailable: рейтинг фільму 3 — дані цього сервісу відсутні у відповіді","reviews-api is unavailable: відгуки на фільм 3 — дані цього сервісу відсутні у відповіді"] [lab07-reviews-down-http-7]
+  49.3s GET /api/aggregator/movies/3/full -> 200 in 19 ms warnings=["reviews-api is unavailable: рейтинг фільму 3 — дані цього сервісу відсутні у відповіді","reviews-api is unavailable: відгуки на фільм 3 — дані цього сервісу відсутні у відповіді"] [lab07-reviews-down-grpc-7]
+  52.1s http://localhost:5400/health/ready -> HTTP 200 Degraded (2099 ms) booking-api=Healthy, catalog-api=Healthy, reviews-api=Degraded, redis-cache=Healthy
+  58.5s Dashboard reviews-api: clicked Запуск ресурса
+  58.5s reviews-api знову відповідає
+   після BreakDuration: пробний запит (Half-Open) → успіх → Closed
+  66.2s GET /api/aggregator/movies/3/full?transport=http -> 200 in 172 ms warnings=["reviews-api is unavailable: відгуки на фільм 3 — дані цього сервісу відсутні у відповіді"] [lab07-circuit-closed-http]
+  67.3s GET /api/aggregator/movies/3/full -> 200 in 110 ms warnings=["reviews-api is unavailable: відгуки на фільм 3 — дані цього сервісу відсутні у відповіді"] [lab07-circuit-closed-grpc]
+  68.4s GET /api/aggregator/movies/3/full?transport=http -> 200 in 90 ms [lab07-after-recovery-http]
+  68.4s GET /api/aggregator/movies/3/full -> 200 in 32 ms [lab07-after-recovery-grpc]
+
+### 3. Redis зупинено: /health/ready → Degraded (200), сервіси відповідають з БД
+  68.9s docker stop redis-3e972f01: redis-3e972f01
+  72.4s GET /api/movies/2 -> 200 in 42 ms [lab07-redis-down-movie]
+  72.7s GET /api/aggregator/bookings/1/full -> 200 in 298 ms [lab07-redis-down-aggregate]
+  72.7s http://localhost:5180/health/ready -> HTTP 200 Degraded (8 ms) booking-db=Healthy, booking-db-schema=Healthy, redis-cache=Degraded
+  72.8s http://localhost:5280/health/ready -> HTTP 200 Degraded (17 ms) catalog-db=Healthy, catalog-db-migrations=Healthy, redis-cache=Degraded
+  72.8s http://localhost:5380/health/ready -> HTTP 200 Degraded (15 ms) reviews-db=Healthy, reviews-db-indexes=Healthy, redis-cache=Degraded
+  72.8s http://localhost:5400/health/ready -> HTTP 200 Degraded (29 ms) booking-api=Healthy, catalog-api=Healthy, reviews-api=Healthy, redis-cache=Degraded
+  73.2s GET /api/movies/4 -> 200 in 5 ms [lab07-redis-down-movie-2]
+  87.0s docker start redis-3e972f01: redis-3e972f01
+  92.9s http://localhost:5280/health/ready -> HTTP 200 Healthy (20 ms) catalog-db=Healthy, catalog-db-migrations=Healthy, redis-cache=Healthy
+
+### 4. SQL Server зупинено: /health/live → 200, /health/ready → 503
+  93.3s docker stop sql-3e972f01: sql-3e972f01
+  97.9s http://localhost:5180/health/live -> HTTP 200 Healthy (5 ms) self=Healthy
+ 101.0s http://localhost:5180/health/ready -> HTTP 503 Unhealthy (3082 ms) booking-db=Unhealthy, booking-db-schema=Unhealthy, redis-cache=Healthy
+ 104.0s http://localhost:5280/health/ready -> HTTP 503 Unhealthy (3035 ms) catalog-db=Unhealthy, catalog-db-migrations=Unhealthy, redis-cache=Healthy
+ 104.1s http://localhost:5400/health/ready -> HTTP 503 Unhealthy (48 ms) booking-api=Unhealthy, catalog-api=Unhealthy, reviews-api=Healthy, redis-cache=Healthy
+ 124.1s docker start sql-3e972f01: sql-3e972f01
+ 183.9s http://localhost:5180/health/ready -> HTTP 200 Healthy (13 ms) booking-db=Healthy, booking-db-schema=Healthy, redis-cache=Healthy
+ 187.0s http://localhost:5400/health/ready -> HTTP 200 Healthy (20 ms) booking-api=Healthy, catalog-api=Healthy, reviews-api=Healthy, redis-cache=Healthy
+
+### 5. Скріни Dashboard: Resources, метрики Polly і бізнес-метрики, логи й traces повторів

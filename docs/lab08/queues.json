@@ -1,0 +1,42 @@
+[
+  {
+    "arguments": {
+      "x-dead-letter-exchange": "catalog-events.dlx",
+      "x-dead-letter-routing-key": "booking.catalog-sync",
+      "x-queue-type": "classic"
+    },
+    "consumers": 1,
+    "durable": true,
+    "messages": 0,
+    "name": "booking.catalog-sync"
+  },
+  {
+    "arguments": {
+      "x-queue-type": "classic"
+    },
+    "consumers": 0,
+    "durable": true,
+    "messages": 2,
+    "name": "booking.catalog-sync.dlq"
+  },
+  {
+    "arguments": {
+      "x-dead-letter-exchange": "catalog-events.dlx",
+      "x-dead-letter-routing-key": "reviews.catalog-sync",
+      "x-queue-type": "classic"
+    },
+    "consumers": 1,
+    "durable": true,
+    "messages": 0,
+    "name": "reviews.catalog-sync"
+  },
+  {
+    "arguments": {
+      "x-queue-type": "classic"
+    },
+    "consumers": 0,
+    "durable": true,
+    "messages": 1,
+    "name": "reviews.catalog-sync.dlq"
+  }
+]

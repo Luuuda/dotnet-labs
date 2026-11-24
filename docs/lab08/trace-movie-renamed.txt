@@ -1,0 +1,117 @@
+Platform
+gateway: PUT /api/movies/{**catch-all} e950338
+Live run
+Ресурсы
+Консоль
+Структурированные журналы
+Трассировки
+Метрики
+Детали трассировки 19:17:26,169
+Длительность 0,23s
+Ресурсы 7
+Глубина 8
+Всего диапазонов 31
+Тип
+(Все)
+Нет фильтров
+Имя
+Ресурс
+0ms
+57,97ms
+0,12s
+0,17s
+0,23s
+Действия
+PUT /api/movies/{**catch-all}
+gateway
+0,1s
+HTTP PUT 200
+gateway
+0,1s
+PUT api/movies/{id:int}
+catalog-api
+99,97ms
+UpdateMovie
+catalog-api
+65,01ms
+DATA mssql CinemaCatalog CatalogDb
+catalog-api
+2,08ms
+DATA mssql CinemaCatalog CatalogDb
+catalog-api
+2,32ms
+DATA mssql CinemaCatalog CatalogDb
+catalog-api
+6,67ms
+DATA redis UNLINK
+catalog-api
+0,91ms
+DATA redis EVAL
+catalog-api
+0,7ms
+DATA redis EVAL
+catalog-api
+0,77ms
+MSG rabbitmq catalog-events
+catalog-api
+4,43ms
+MSG rabbitmq booking.catalog-sync
+booking-api
+24,45ms
+DATA mssql CinemaBooking CinemaBookingDb
+booking-api
+1,41ms
+DATA mssql CinemaBooking CinemaBookingDb
+booking-api
+1,97ms
+DATA mssql CinemaBooking CinemaBookingDb
+booking-api
+1,56ms
+DATA redis UNLINK
+booking-api
+0,97ms
+DATA redis UNLINK
+booking-api
+0,67ms
+DATA redis EVAL
+booking-api
+0,72ms
+MSG rabbitmq reviews.catalog-sync
+reviews-api
+0,13s
+MediatR SyncMovieTitleCommand
+reviews-api
+0,11s
+DATA mongodb find processedEvents ReviewsDb
+reviews-api
+1,92ms
+DATA mongodb update movieTitleSync ReviewsDb
+reviews-api
+5,59ms
+DATA mongodb update reviews ReviewsDb
+reviews-api
+2,35ms
+DATA mongodb update discussions ReviewsDb
+reviews-api
+1,57ms
+DATA mongodb insert processedEvents ReviewsDb
+reviews-api
+1,51ms
+DATA redis UNLINK
+reviews-api
+1,53ms
+DATA redis EVAL
+reviews-api
+2,87ms
+cache get card
+catalog-api
+5,78ms
+DATA redis HMGET
+catalog-api
+0,85ms
+DATA mssql CinemaCatalog CatalogDb
+catalog-api
+2,04ms
+DATA redis EVAL
+catalog-api
+0,96ms
