@@ -12,8 +12,8 @@ public static class CachingRegistration
     public static IServiceCollection AddCatalogCaching(this IServiceCollection services, bool warmUp)
     {
         // Запасні реєстрації (TryAdd): якщо хост не зареєстрував сховища / метрики (unit-тести, консольний запуск),
-        // L1 — пам'ять без ліміту, L2 — пам'ять замість Redis. Program.cs реєструє їх раніше, тож вони мають пріоритет.
-        services.AddMemoryCache();
+        // L1 — пам'ять із SizeLimit, L2 — пам'ять замість Redis. Program.cs реєструє їх раніше, тож вони мають пріоритет.
+        services.AddMemoryCache(o => o.SizeLimit ??= 10_000);   // ліміт розміру завжди є: записи кешу мають Size у КБ
         services.AddDistributedMemoryCache();
         services.AddMetrics();
         services.TryAddSingleton(TimeProvider.System);

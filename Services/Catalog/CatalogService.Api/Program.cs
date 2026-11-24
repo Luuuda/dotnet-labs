@@ -47,9 +47,13 @@ builder.Services.AddBusinessLogicLayer(connectionString,
     builder.Configuration["AutoMapper:LicenseKey"] is { Length: > 0 } key ? key : null,
     cacheWarmUp: builder.Configuration.GetValue("Cache:WarmUp", true));
 
-// --- Лаб. 06: gRPC (AddGrpc + серверний interceptor логування з ServiceDefaults) ---------------
+// --- Лаб. 06: gRPC (AddGrpc + серверний interceptor логування; MapGrpcService — нижче) -----------
 // REST і gRPC слухають різні порти Kestrel (appsettings.json): 5280 — HTTP/1.1 для Gateway, 5281 — лише HTTP/2 для gRPC без TLS.
-builder.AddPlatformGrpc();
+builder.Services.AddGrpc(options =>
+{
+    options.Interceptors.Add<GrpcServerLoggingInterceptor>();          // серверний interceptor логування (Platform.ServiceDefaults/Grpc)
+    options.EnableDetailedErrors = builder.Environment.IsDevelopment(); // деталі винятків у відповіді — лише в Development
+});
 
 builder.Services.AddControllers();
 
