@@ -64,8 +64,8 @@ public sealed class AggregateCache
             _logger.LogInformation("Aggregate cache skip {CacheKey}: часткова відповідь не кешується", key);
             return (value, false);
         }
-        await TrySetAsync(key, value, ttl, ct);
-        _logger.LogInformation("Aggregate cache set {CacheKey} на {TtlSeconds} с", key, ttl.TotalSeconds);
+        if (await TrySetAsync(key, value, ttl, ct))
+            _logger.LogInformation("Aggregate cache set {CacheKey} на {TtlSeconds} с", key, ttl.TotalSeconds);
         return (value, false);
     }
 
@@ -88,18 +88,25 @@ public sealed class AggregateCache
         }
     }
 
-    private async Task TrySetAsync<T>(string key, T value, TimeSpan ttl, CancellationToken ct)
+    /// <summary>Запис у Redis, збій якого не провалює запит (graceful degradation). false — не закешовано.</summary>
+    private async Task<bool> TrySetAsync<T>(string key, T value, TimeSpan ttl, CancellationToken ct)
     {
-        if (RedisSkipped) return;
+        if (RedisSkipped)
+        {
+            _logger.LogDebug("Aggregate cache {CacheKey}: Redis тимчасово пропускається, відповідь не кешується", key);
+            return false;
+        }
         try
         {
             await _cache.SetAsync(key, JsonSerializer.SerializeToUtf8Bytes(value, Json),
                 new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = ttl }, ct);
+            return true;
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             RedisFailed();
             _logger.LogWarning(ex, "Redis недоступний — відповідь не закешовано ({CacheKey})", key);
+            return false;
         }
     }
 }

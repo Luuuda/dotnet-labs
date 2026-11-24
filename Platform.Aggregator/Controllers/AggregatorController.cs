@@ -1,5 +1,7 @@
+using System.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 using Platform.Aggregator.Clients;
+using Platform.Aggregator.Metrics;
 using Platform.Aggregator.Models;
 using Platform.Aggregator.Services;
 
@@ -12,7 +14,8 @@ namespace Platform.Aggregator.Controllers;
 [ApiController]
 [Route("api/aggregator")]
 [Produces("application/json")]
-public sealed class AggregatorController(ServiceSourcesFactory sourcesFactory, AggregateCache cache, ILoggerFactory loggers) : ControllerBase
+public sealed class AggregatorController(ServiceSourcesFactory sourcesFactory, AggregateCache cache, ILoggerFactory loggers,
+    AggregatorMetrics metrics) : ControllerBase
 {
     /// <summary>
     /// Повна картка бронювання: квитки (booking-api), актуальні сеанси й фільми (catalog-api), рейтинг і відгуки (reviews-api).
@@ -29,8 +32,10 @@ public sealed class AggregatorController(ServiceSourcesFactory sourcesFactory, A
     {
         var sources = sourcesFactory.Get(transport);
         var aggregator = new BookingCardAggregator(sources, loggers.CreateLogger<BookingCardAggregator>());
-        var (card, fromCache) = await cache.GetOrBuildAsync(AggregateCache.BookingKey(id), AggregateCache.BookingTtl,
-            Bypass(sources), () => aggregator.GetAsync(id, ct), c => c.Warnings.Count == 0, ct);
+        var (card, fromCache) = await MeasureAsync("booking_card", sources,
+            () => cache.GetOrBuildAsync(AggregateCache.BookingKey(id), AggregateCache.BookingTtl,
+                Bypass(sources), () => aggregator.GetAsync(id, ct), c => c.Warnings.Count == 0, ct),
+            c => c.Warnings.Count);
         SetHeaders(sources, fromCache);
         return card is not null
             ? Ok(card)
@@ -48,8 +53,10 @@ public sealed class AggregatorController(ServiceSourcesFactory sourcesFactory, A
     {
         var sources = sourcesFactory.Get(transport);
         var aggregator = new MovieCardAggregator(sources, loggers.CreateLogger<MovieCardAggregator>());
-        var (card, fromCache) = await cache.GetOrBuildAsync(AggregateCache.MovieKey(movieId), AggregateCache.MovieTtl,
-            Bypass(sources), () => aggregator.GetAsync(movieId, ct), c => c.Warnings.Count == 0, ct);
+        var (card, fromCache) = await MeasureAsync("movie_card", sources,
+            () => cache.GetOrBuildAsync(AggregateCache.MovieKey(movieId), AggregateCache.MovieTtl,
+                Bypass(sources), () => aggregator.GetAsync(movieId, ct), c => c.Warnings.Count == 0, ct),
+            c => c.Warnings.Count);
         SetHeaders(sources, fromCache);
         return card is not null
             ? Ok(card)
@@ -76,10 +83,34 @@ public sealed class AggregatorController(ServiceSourcesFactory sourcesFactory, A
 
         var sources = sourcesFactory.Get(transport);
         var aggregator = new PosterBoardAggregator(sources, loggers.CreateLogger<PosterBoardAggregator>());
-        var (board, fromCache) = await cache.GetOrBuildAsync(AggregateCache.BoardKey(movieIds), AggregateCache.BookingTtl,
-            Bypass(sources), async () => await aggregator.GetAsync(movieIds, ct), b => b.Warnings.Count == 0, ct);
+        var (board, fromCache) = await MeasureAsync("poster_board", sources,
+            () => cache.GetOrBuildAsync(AggregateCache.BoardKey(movieIds), AggregateCache.BookingTtl,
+                Bypass(sources), async () => await aggregator.GetAsync(movieIds, ct), b => b.Warnings.Count == 0, ct),
+            b => b.Warnings.Count);
         SetHeaders(sources, fromCache);
         return Ok(board);
+    }
+
+    /// <summary>
+    /// Лаб. 07: тривалість і результат агрегації — у метрики (aggregator.responses, aggregator.request.duration).
+    /// Записується для ВСІХ виконань, включно з винятками (503 від обов'язкового сервісу, скасування).
+    /// </summary>
+    private async Task<(T? Value, bool FromCache)> MeasureAsync<T>(string endpoint, ServiceSources sources,
+        Func<Task<(T? Value, bool FromCache)>> action, Func<T, int> warnings) where T : class
+    {
+        var sw = Stopwatch.StartNew();
+        try
+        {
+            var result = await action();
+            var outcome = result.Value is null ? "not_found" : warnings(result.Value) > 0 ? "partial" : "complete";
+            metrics.Record(endpoint, sources.Transport, outcome, result.FromCache, sw.Elapsed.TotalMilliseconds);
+            return result;
+        }
+        catch
+        {
+            metrics.Record(endpoint, sources.Transport, "failed", fromCache: false, sw.Elapsed.TotalMilliseconds);
+            throw;
+        }
     }
 
     /// <summary>Кеш пропускається для HTTP-транспорту (вимірювання) і на запит клієнта Cache-Control: no-cache.</summary>

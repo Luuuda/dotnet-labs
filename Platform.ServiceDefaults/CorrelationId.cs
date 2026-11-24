@@ -42,12 +42,14 @@ public sealed class CorrelationIdMiddleware(RequestDelegate next, ILogger<Correl
         using (LogContext.PushProperty("CorrelationId", correlationId))
         using (LogContext.PushProperty("RequestPath", context.Request.Path.Value))
         {
-            if (generated)
+            if (generated && !Microsoft.Extensions.Hosting.Extensions.IsHealthProbe(context.Request.Path))
                 logger.LogInformation("Згенеровано новий CorrelationId {CorrelationId} для {Method} {Path}",
                     correlationId, context.Request.Method, context.Request.Path);
 
-            // Лаб. 06: gRPC-виклики логує серверний interceptor (метод, peer, статус gRPC, тривалість) — без дублювання тут
-            if (context.Request.ContentType?.StartsWith("application/grpc", StringComparison.OrdinalIgnoreCase) == true)
+            // Лаб. 06: gRPC-виклики логує серверний interceptor (метод, peer, статус gRPC, тривалість) — без дублювання тут.
+            // Лаб. 07: регулярні опитування /health/* (Aspire, Kubernetes) теж не засмічують логи.
+            if (context.Request.ContentType?.StartsWith("application/grpc", StringComparison.OrdinalIgnoreCase) == true
+                || Microsoft.Extensions.Hosting.Extensions.IsHealthProbe(context.Request.Path))
             {
                 await next(context);
                 return;

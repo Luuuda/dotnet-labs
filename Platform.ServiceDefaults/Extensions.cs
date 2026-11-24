@@ -25,6 +25,19 @@ public static class Extensions
     public const string HealthEndpointPath = "/health";
     public const string AlivenessEndpointPath = "/alive";
 
+    // Лаб. 07: окремі endpoints для оркестратора (Aspire зараз, Kubernetes у Лаб. 10)
+    public const string LivenessEndpointPath = "/health/live";      // лише процес (тег live), < 100 мс
+    public const string ReadinessEndpointPath = "/health/ready";    // залежності (тег ready), JSON з деталями
+    public const string StartupEndpointPath = "/health/startup";    // ініціалізація (тег startup): міграції, індекси
+
+    /// <summary>Теги health checks, за якими перевірки розподіляються між endpoints (Predicate у MapHealthChecks).</summary>
+    public static class HealthTags
+    {
+        public const string Live = "live";
+        public const string Ready = "ready";
+        public const string Startup = "startup";
+    }
+
     /// <summary>Джерела власних spans бізнес-операцій: Cinema.Booking, Cinema.Catalog, Cinema.Reviews, Cinema.Aggregator…</summary>
     public const string BusinessActivitySources = "Cinema.*";
 
@@ -34,6 +47,20 @@ public static class Extensions
     /// </summary>
     public static readonly string[] CacheMeters =
         ["Cinema.Catalog.Cache", "Cinema.Booking.Cache", "Cinema.Reviews.Cache", "Cinema.Aggregator.Cache"];
+
+    /// <summary>
+    /// Лаб. 07: Meter-и бізнес-метрик. Назва Meter = назва сервісу (проєкту); клас метрик кожного сервісу лежить у
+    /// &lt;Сервіс&gt;.Api/Metrics/ і створює Meter через IMeterFactory.
+    /// </summary>
+    public static readonly string[] BusinessMeters =
+        ["BookingService.Api", "CatalogService.Api", "Reviews.WebApi", "Platform.Aggregator"];
+
+    /// <summary>
+    /// Лаб. 07: Meter, через який Polly (Microsoft.Extensions.Http.Resilience) публікує resilience.polly.strategy.events
+    /// (OnRetry, OnCircuitOpened, OnCircuitHalfOpened, OnCircuitClosed, OnTimeout), resilience.polly.pipeline.duration
+    /// і resilience.polly.strategy.attempt.duration.
+    /// </summary>
+    public const string PollyMeter = "Polly";
 
     /// <summary>Вбудовані метрики gRPC (тривалість і кількість викликів сервера та клієнта).</summary>
     public static readonly string[] GrpcMeters = ["Grpc.AspNetCore.Server", "Grpc.Net.Client"];
@@ -54,8 +81,12 @@ public static class Extensions
 
         builder.Services.ConfigureHttpClientDefaults(http =>
         {
-            // Retry + Circuit Breaker + Timeout (детально — Лаб. 07). Параметри можна змінити секцією
-            // HttpClientResilience в appsettings сервісу (так Aggregator скорочує очікування недоступних сервісів).
+            // Лаб. 07: Standard Resilience Handler для ВСІХ HttpClient і gRPC-клієнтів (вони створюються тією самою
+            // фабрикою): rate limiter → загальний таймаут → retry → circuit breaker → таймаут спроби.
+            // Значення за замовчуванням (Microsoft Learn): 3 повтори від 2 с з jitter, breaker 10 % при ≥ 100 запитах
+            // за 30 с, таймаут спроби 10 с, загальний 30 с; за потреби — секція HttpClientResilience в appsettings.
+            // Клієнти з іншою критичністю (Aggregator) спершу викликають RemoveAllResilienceHandlers() і додають
+            // власний обробник — другий AddStandardResilienceHandler() поверх цього нашарував би повтори й таймаути.
             http.AddStandardResilienceHandler(options =>
                 builder.Configuration.GetSection("HttpClientResilience").Bind(options));
             http.AddServiceDiscovery();                                 // http://booking-api → реальна адреса від Aspire
@@ -86,7 +117,11 @@ public static class Extensions
             .MinimumLevel.Override("Microsoft.AspNetCore.Diagnostics.ExceptionHandlerMiddleware", LogEventLevel.Fatal)
             .MinimumLevel.Override("Microsoft.EntityFrameworkCore", LogEventLevel.Warning)
             .MinimumLevel.Override("System.Net.Http.HttpClient", LogEventLevel.Warning)
-            .MinimumLevel.Override("Polly", LogEventLevel.Warning)
+            // Лаб. 07: події resilience — повтор (Warning), розмикання ланцюга (Error), повернення в Closed (Information)
+            .MinimumLevel.Override("Polly", LogEventLevel.Information)
+            // клієнт gRPC: службові Debug-записи (Sending/Reading message) приховано, оцінку повторів — лишено
+            .MinimumLevel.Override("Grpc", LogEventLevel.Information)
+            .MinimumLevel.Override("Grpc.Net.Client.Internal.Retry", LogEventLevel.Debug)
             .MinimumLevel.Override("Yarp", LogEventLevel.Warning)
             .MinimumLevel.Override("LuckyPennySoftware", LogEventLevel.Warning)
             .Enrich.FromLogContext()                                                    // CorrelationId і властивості запиту
@@ -131,6 +166,8 @@ public static class Extensions
                 .AddRuntimeInstrumentation()
                 .AddMeter(BusinessActivitySources)
                 .AddMeter(CacheMeters)                       // Лаб. 06: метрики попадань / промахів кешу
+                .AddMeter(BusinessMeters)                    // Лаб. 07: бізнес-метрики сервісів (<Сервіс>.Api/Metrics)
+                .AddMeter(PollyMeter)                        // Лаб. 07: події resilience (retry, circuit breaker, timeout)
                 .AddMeter(GrpcMeters))
             .WithTracing(tracing => tracing
                 .SetSampler(new ParentBasedSampler(new TraceIdRatioBasedSampler(samplingRatio)))
@@ -140,12 +177,14 @@ public static class Extensions
                 .AddAspNetCoreInstrumentation(options =>
                 {
                     options.RecordException = true;
-                    // health checks не засмічують трасування
-                    options.Filter = context =>
-                        !context.Request.Path.StartsWithSegments(HealthEndpointPath)
-                        && !context.Request.Path.StartsWithSegments(AlivenessEndpointPath);
+                    // health checks (HTTP і gRPC Health Checking Protocol) не засмічують трасування
+                    options.Filter = context => !IsHealthProbe(context.Request.Path);
                 })
-                .AddHttpClientInstrumentation(options => options.RecordException = true)
+                .AddHttpClientInstrumentation(options =>
+                {
+                    options.RecordException = true;
+                    options.FilterHttpRequestMessage = request => !IsHealthProbe(request.RequestUri?.AbsolutePath);
+                })
                 .AddSqlClientInstrumentation());
 
         builder.AddOpenTelemetryExporters();
@@ -160,23 +199,57 @@ public static class Extensions
         return builder;
     }
 
+    /// <summary>
+    /// Перевірка "self" (тег live) — єдина, що потрапляє в liveness: відповідає миттєво й не звертається до баз.
+    /// Перевірки залежностей (SQL Server, MongoDB, Redis, gRPC) кожен сервіс додає у своєму Program.cs з тегом ready.
+    /// </summary>
     public static TBuilder AddDefaultHealthChecks<TBuilder>(this TBuilder builder) where TBuilder : IHostApplicationBuilder
     {
         builder.Services.AddHealthChecks()
-            .AddCheck("self", () => HealthCheckResult.Healthy(), ["live"]);
+            .AddCheck("self", () => HealthCheckResult.Healthy("Процес відповідає"), [HealthTags.Live]);
         return builder;
     }
 
     /// <summary>
-    /// /health — готовність (усі перевірки, включно з перевірками баз, які зареєстрував сервіс),
-    /// /alive — лише «процес живий» (тег live).
+    /// Лаб. 07: endpoints стану. На відміну від шаблону Aspire (лише Development), вони публікуються в УСІХ
+    /// середовищах: їх опитують Aspire (WithHttpHealthCheck) і Kubernetes (probes у Лаб. 10). Відповіді не містять
+    /// секретів — лише назви перевірок, статуси, описи й тривалість.
+    /// <list type="bullet">
+    /// <item>/health/live — liveness: лише тег live (процес живий), без зовнішніх залежностей → збій = перезапуск;</item>
+    /// <item>/health/ready — readiness: тег ready (бази, Redis, gRPC-залежності) з JSON-деталями кожної перевірки →
+    /// збій = виключення з балансування. Degraded (Redis недоступний) лишається 200: сервіс працює без кешу;</item>
+    /// <item>/health/startup — тег startup (міграції, індекси): для сервісів із повільним стартом;</item>
+    /// <item>/health — усі перевірки з деталями (його опитує Aspire Dashboard), /alive — синонім liveness з шаблону.</item>
+    /// </list>
     /// </summary>
     public static WebApplication MapDefaultEndpoints(this WebApplication app)
     {
+        app.MapHealthChecks(LivenessEndpointPath, new HealthCheckOptions
+        {
+            Predicate = check => check.Tags.Contains(HealthTags.Live),
+            ResponseWriter = HealthResponseWriter.WriteAsync
+        });
+        app.MapHealthChecks(ReadinessEndpointPath, new HealthCheckOptions
+        {
+            Predicate = check => check.Tags.Contains(HealthTags.Ready),
+            ResponseWriter = HealthResponseWriter.WriteAsync
+        });
+        app.MapHealthChecks(StartupEndpointPath, new HealthCheckOptions
+        {
+            Predicate = check => check.Tags.Contains(HealthTags.Startup),
+            ResponseWriter = HealthResponseWriter.WriteAsync
+        });
         app.MapHealthChecks(HealthEndpointPath, new HealthCheckOptions { ResponseWriter = HealthResponseWriter.WriteAsync });
-        app.MapHealthChecks(AlivenessEndpointPath, new HealthCheckOptions { Predicate = r => r.Tags.Contains("live") });
+        app.MapHealthChecks(AlivenessEndpointPath, new HealthCheckOptions { Predicate = check => check.Tags.Contains(HealthTags.Live) });
         return app;
     }
+
+    /// <summary>Запити health checks: /health*, /alive і gRPC Health Checking Protocol (grpc.health.v1.Health).</summary>
+    public static bool IsHealthProbe(string? path) =>
+        path is not null
+        && (path.StartsWith(HealthEndpointPath, StringComparison.OrdinalIgnoreCase)
+            || path.StartsWith(AlivenessEndpointPath, StringComparison.OrdinalIgnoreCase)
+            || path.StartsWith("/grpc.health.v1.Health/", StringComparison.OrdinalIgnoreCase));
 
     /// <summary>CorrelationId: читається із заголовка або генерується, кладеться в LogContext і відповідь (Частина 4.2).</summary>
     public static IApplicationBuilder UseCorrelationId(this IApplicationBuilder app)

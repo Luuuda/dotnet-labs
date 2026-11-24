@@ -22,6 +22,12 @@ public sealed class GrpcServerLoggingInterceptor(ILogger<GrpcServerLoggingInterc
         try
         {
             var response = await continuation(request, context);
+            // Лаб. 07: опитування gRPC Health Checking Protocol (Aggregator, кожні кілька секунд) — лише на рівні Debug
+            if (Microsoft.Extensions.Hosting.Extensions.IsHealthProbe(context.Method))
+            {
+                logger.LogDebug("gRPC health probe {GrpcMethod} from {GrpcPeer} in {ElapsedMs} ms", context.Method, context.Peer, sw.ElapsedMilliseconds);
+                return response;
+            }
             logger.LogInformation("gRPC {GrpcMethod} from {GrpcPeer}: {GrpcStatus} in {ElapsedMs} ms (CorrelationId {GrpcCorrelationId})",
                 context.Method, context.Peer, StatusCode.OK, sw.ElapsedMilliseconds, correlationId);
             return response;
