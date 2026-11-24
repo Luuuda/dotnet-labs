@@ -1,0 +1,44 @@
+### 1. Повторне читання: перший запит — БД, другий — кеш (немає SQL-span)
+GET /api/movies/3 -> 200 in 351.5 ms; X-Cache=-; X-Correlation-Id=lab06-movie-first; X-Trace-Id=c9b7f2688968f298d70336266e45a5ff
+GET /api/movies/3 -> 200 in 15.6 ms; X-Cache=-; X-Correlation-Id=lab06-movie-repeat; X-Trace-Id=dbec8ece25605b10796055b5d16444f6
+
+### 2. PUT інвалідує кеш: наступний GET повертає нові дані
+GET /api/movies/3 -> 200 in 6.6 ms; X-Cache=-; X-Correlation-Id=788d3ebd-3a50-490a-87ea-cd84771c4022; X-Trace-Id=ce1d9a3407e20b1391e5edec7157a269
+PUT /api/movies/3 -> 200 in 229.8 ms; X-Cache=-; X-Correlation-Id=lab06-movie-put; X-Trace-Id=2a7fdf7098977a11f4340c63f506ff71
+GET /api/movies/3 -> 200 in 5.4 ms; X-Cache=-; X-Correlation-Id=lab06-movie-after-put; X-Trace-Id=689caae06929a9ef13170526ca06d6cb
+   опис після PUT: «Пол Атрід об'єднується з фрименами (оновлено 23:33:30).» — НОВІ дані
+PUT /api/movies/3 -> 200 in 32.2 ms; X-Cache=-; X-Correlation-Id=f49239da-f435-445e-89ca-a6cc3791a066; X-Trace-Id=ef28bb65330d0fffdbd1f343ba056d64
+
+### 3. Aggregator через gRPC (Cache-Control: no-cache — справжня агрегація), потім кеш агрегованої відповіді в Redis
+GET /api/aggregator/bookings/1/full -> 200 in 1026.3 ms; X-Cache=MISS; X-Correlation-Id=lab06-aggregate-grpc; X-Trace-Id=ec30c9a891f67e02a9c183f3ccfb4f0a
+GET /api/aggregator/bookings/1/full?transport=http -> 200 in 118.5 ms; X-Cache=MISS; X-Correlation-Id=lab06-aggregate-http; X-Trace-Id=2cd1922faa13373e6485b8a4338da255
+GET /api/aggregator/movies/9999/full -> 404 in 80.4 ms; X-Cache=MISS; X-Correlation-Id=lab06-grpc-notfound; X-Trace-Id=00635545ded9c79eb389eb639ff415e3
+   body: {"type":"https://tools.ietf.org/html/rfc9110#section-15.5.5","title":"Фільм не знайдено","status":404,"detail":"Фільму 9999 немає в каталозі","traceId":"00635545ded9c79eb389eb639ff415e3","correlationId":"lab06-grpc-notfound"}
+
+### 4. Порівняння затримок HTTP (Лаб. 05) і gRPC (Лаб. 06), без кешу агрегатора
+   /api/aggregator/bookings/1/full: gRPC {"n":40,"mean":13,"median":12.3,"p95":18.1,"min":10.1} | HTTP {"n":40,"mean":11,"median":10.6,"p95":18.2,"min":9}
+   /api/aggregator/movies/3/full: gRPC {"n":40,"mean":7.3,"median":7.3,"p95":8.9,"min":5.5} | HTTP {"n":40,"mean":6.9,"median":7,"p95":8.7,"min":5.1}
+   афіша з 7 фільмів: gRPC — 2 пакетні виклики (GetMoviesByIds + GetRatingsForMovies), REST — 14 запитів
+   /api/aggregator/movies/board?ids=1,2,3,4,5,6,7: gRPC {"n":40,"mean":7.8,"median":7,"p95":8.1,"min":6.2} | HTTP {"n":40,"mean":8.4,"median":7.8,"p95":11.3,"min":7.1}
+   паралельне навантаження: 16 одночасних клієнтів, 320 запитів картки бронювання на транспорт
+   http: {"n":320,"mean":28.7,"median":27.2,"p95":45.2,"min":15.1,"totalMs":584,"rps":548.2}
+   grpc: {"n":320,"mean":35.4,"median":34.7,"p95":50.4,"min":15.6,"totalMs":717,"rps":446.5}
+GET /api/aggregator/movies/board?ids=1,2,3,4,5,6,7&transport=http -> 200 in 21.8 ms; X-Cache=MISS; X-Correlation-Id=lab06-board-http; X-Trace-Id=52a0f7a3417f7c96176956510e40ff61
+GET /api/aggregator/movies/board?ids=1,2,3,4,5,6,7 -> 200 in 8.7 ms; X-Cache=MISS; X-Correlation-Id=lab06-board-grpc; X-Trace-Id=6d41accc13b2dbfa4056b2632bb9394f
+GET /api/aggregator/bookings/1/full?transport=http -> 200 in 25.8 ms; X-Cache=MISS; X-Correlation-Id=lab06-bench-http; X-Trace-Id=fbba322d249669f23193625a8cd4937a
+GET /api/aggregator/bookings/1/full -> 200 in 8.1 ms; X-Cache=MISS; X-Correlation-Id=lab06-bench-grpc; X-Trace-Id=dd22faf33715e1f6ba7f46ac4610b5d0
+
+   кеш агрегованої відповіді в Redis: перший запит збирає (MISS), повторний — з Redis (HIT)
+GET /api/aggregator/movies/3/full -> 200 in 23.0 ms; X-Cache=MISS; X-Correlation-Id=lab06-aggregate-movie-1; X-Trace-Id=0cdde04704d4b75e7b5927a5949d460f
+GET /api/aggregator/movies/3/full -> 200 in 6.8 ms; X-Cache=HIT; X-Correlation-Id=lab06-aggregate-movie-2; X-Trace-Id=0c0b4b80f6c848413622da8e5a0d56d0
+
+### 5. Redis зупинено — сервіси відповідають з БД (повільніше), а не падають
+   docker stop redis-ed5f6542: redis-ed5f6542
+GET /api/movies/2 -> 200 in 1645.3 ms; X-Cache=-; X-Correlation-Id=lab06-redis-down-1; X-Trace-Id=50c74a00da8c310e28e68da9f78be2f9
+GET /api/movies/5 -> 200 in 8.0 ms; X-Cache=-; X-Correlation-Id=lab06-redis-down-2; X-Trace-Id=d07e23d1253ee918914c659202cb9db6
+GET /api/aggregator/bookings/2/full -> 200 in 5198.2 ms; X-Cache=MISS; X-Correlation-Id=lab06-redis-down-aggregate; X-Trace-Id=9fa551e98f0c646632989c63e0020427
+   docker start redis-ed5f6542: redis-ed5f6542
+
+### 6. catalog-api зупинено — часткова відповідь Aggregator (gRPC Unavailable → Warnings, не 500)
+   catalog-api stopped
+GET /api/aggregator/bookings/1/full -> 200 in 6130.9 ms; X-Cache=MISS; X-Correlation-Id=lab06-partial-catalog; X-Trace-Id=e370b6f6a7bde9d0fa30c733b689e49f

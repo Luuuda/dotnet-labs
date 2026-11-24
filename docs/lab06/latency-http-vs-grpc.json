@@ -1,0 +1,68 @@
+{
+  "/api/aggregator/bookings/1/full": {
+    "grpc": {
+      "n": 40,
+      "mean": 13,
+      "median": 12.3,
+      "p95": 18.1,
+      "min": 10.1
+    },
+    "http": {
+      "n": 40,
+      "mean": 11,
+      "median": 10.6,
+      "p95": 18.2,
+      "min": 9
+    }
+  },
+  "/api/aggregator/movies/3/full": {
+    "grpc": {
+      "n": 40,
+      "mean": 7.3,
+      "median": 7.3,
+      "p95": 8.9,
+      "min": 5.5
+    },
+    "http": {
+      "n": 40,
+      "mean": 6.9,
+      "median": 7,
+      "p95": 8.7,
+      "min": 5.1
+    }
+  },
+  "/api/aggregator/movies/board?ids=1,2,3,4,5,6,7": {
+    "grpc": {
+      "n": 40,
+      "mean": 7.8,
+      "median": 7,
+      "p95": 8.1,
+      "min": 6.2
+    },
+    "http": {
+      "n": 40,
+      "mean": 8.4,
+      "median": 7.8,
+      "p95": 11.3,
+      "min": 7.1
+    }
+  },
+  "parallel-16:http": {
+    "n": 320,
+    "mean": 28.7,
+    "median": 27.2,
+    "p95": 45.2,
+    "min": 15.1,
+    "totalMs": 584,
+    "rps": 548.2
+  },
+  "parallel-16:grpc": {
+    "n": 320,
+    "mean": 35.4,
+    "median": 34.7,
+    "p95": 50.4,
+    "min": 15.6,
+    "totalMs": 717,
+    "rps": 446.5
+  }
+}

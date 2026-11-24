@@ -1,0 +1,81 @@
+// Контракт gRPC сервісу Каталогу (Лаб. 06). Сервер — CatalogService.Api (GrpcServices="Server"),
+// клієнт — Platform.Aggregator (той самий файл, GrpcServices="Client").
+// Номери полів після публікації НЕ змінюються: саме вони визначають бінарний формат повідомлення.
+syntax = "proto3";
+
+option csharp_namespace = "CatalogService.Grpc";
+
+package cinema.catalog.v1;
+
+import "google/protobuf/timestamp.proto";
+
+// Читання каталогу для внутрішніх сервісів (Aggregator). Усі методи йдуть через той самий BLL з кешем L1/L2.
+service CatalogGrpc {
+  // Картка фільму. Неіснуючий Id → NOT_FOUND, Id <= 0 → INVALID_ARGUMENT.
+  rpc GetMovie (GetMovieRequest) returns (MovieReply);
+  // Кілька карток одним викликом; відсутні Id пропускаються.
+  rpc GetMoviesByIds (GetMoviesByIdsRequest) returns (MoviesReply);
+  // Сеанс розкладу (актуальні ціна, формат, статус).
+  rpc GetScreening (GetScreeningRequest) returns (ScreeningReply);
+  // Кілька сеансів одним викликом.
+  rpc GetScreeningsByIds (GetScreeningsByIdsRequest) returns (ScreeningsReply);
+  // Найближчі сеанси фільму, відсортовані за часом.
+  rpc GetUpcomingScreenings (GetUpcomingScreeningsRequest) returns (ScreeningsReply);
+}
+
+// Гроші без похибок double: units — ціла частина, nanos — дробова (10^-9), як google.type.Money.
+message Money {
+  int64 units = 1;
+  int32 nanos = 2;
+  string currency_code = 3;   // "UAH"
+}
+
+message GetMovieRequest { int32 id = 1; }
+message GetMoviesByIdsRequest { repeated int32 ids = 1; }
+message GetScreeningRequest { int64 id = 1; }
+message GetScreeningsByIdsRequest { repeated int64 ids = 1; }
+message GetUpcomingScreeningsRequest {
+  int32 movie_id = 1;
+  int32 limit = 2;            // 0 → 20
+}
+
+message GenreReply {
+  int32 id = 1;
+  string name = 2;
+  string slug = 3;
+  bool is_primary = 4;
+}
+
+message MovieReply {
+  int32 id = 1;
+  string title = 2;
+  optional string original_title = 3;
+  int32 release_year = 4;
+  int32 duration_minutes = 5;
+  string age_rating = 6;
+  optional string description = 7;
+  optional string director = 8;
+  optional string country = 9;
+  optional string language = 10;
+  repeated GenreReply genres = 11;
+  optional double average_rating = 12;
+  int32 ratings_count = 13;
+}
+
+message MoviesReply { repeated MovieReply movies = 1; }
+
+message ScreeningReply {
+  int64 id = 1;
+  int32 movie_id = 2;
+  string movie_title = 3;
+  int32 hall_id = 4;
+  string hall_name = 5;
+  google.protobuf.Timestamp starts_at = 6;   // місцевий час кінотеатру, переданий як UTC без зсуву
+  google.protobuf.Timestamp ends_at = 7;
+  string format = 8;
+  string language = 9;
+  Money base_price = 10;
+  bool is_cancelled = 11;
+}
+
+message ScreeningsReply { repeated ScreeningReply screenings = 1; }

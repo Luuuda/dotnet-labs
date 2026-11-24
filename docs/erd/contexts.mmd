@@ -1,0 +1,21 @@
+flowchart LR
+    subgraph C["CinemaCatalog (SQL + EF Core)"]
+      M[Movies]:::own --- S[Screenings]:::own
+      H[Halls]:::own --- S
+    end
+    subgraph B["CinemaBooking (SQL + ADO.NET/Dapper)"]
+      CU[Customers]:::own --- BK[Bookings]:::own --- T[Tickets<br/>snapshot: MovieTitle, UnitPrice]
+      LS[Screenings<br/>local copy]:::copy --- T
+    end
+    subgraph R["cinema_reviews (MongoDB)"]
+      RV[reviews<br/>movieTitle, author.displayName]:::copy
+      DS[discussions]:::own --- DP[discussionPosts]:::own
+      MR[movieRatings]:::own
+    end
+    S -. "Id, events ScreeningChanged" .-> LS
+    M -. "movieId, event MovieRenamed" .-> RV
+    CU -. "userId, event CustomerRenamed" .-> RV
+    BK -. "event TicketsIssued -> verifiedViewer" .-> RV
+    MR -. "event MovieRatingChanged" .-> M
+    classDef own fill:#e8f1ff,stroke:#3b6fd8
+    classDef copy fill:#fff4e0,stroke:#d89b3b

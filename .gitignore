@@ -5,3 +5,7 @@ deploy.log
 .vscode/
 bin/
 obj/
+logs/
+TestResults/
+verify.log
+*.user

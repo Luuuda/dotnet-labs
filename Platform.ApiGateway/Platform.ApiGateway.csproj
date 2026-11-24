@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <!-- Єдина точка входу: YARP-маршрутизація до мікросервісів за логічними іменами (service discovery Aspire),
+       генерація CorrelationId і логування маршрутизації. Бізнес-логіки немає. -->
+  <ItemGroup>
+    <PackageReference Include="Yarp.ReverseProxy" Version="2.3.0" />
+    <PackageReference Include="Microsoft.Extensions.ServiceDiscovery.Yarp" Version="9.4.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Platform.ServiceDefaults\Platform.ServiceDefaults.csproj" />
+  </ItemGroup>
+</Project>

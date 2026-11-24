@@ -1,0 +1,20 @@
+GET http://localhost:5000/api/movies?pageSize=3 -> 200 in 4832 ms; X-Correlation-Id=demo-catalog-list; X-Trace-Id=27bb404b87c368df1cc8a87972c69376
+POST http://localhost:5000/api/bookings -> 201 in 1049 ms; X-Correlation-Id=demo-create-booking; X-Trace-Id=fea26c449ad61ed1127fe116568dd7f4
+POST http://localhost:5000/api/bookings/6/confirm -> 204 in 171 ms; X-Correlation-Id=demo-confirm-booking; X-Trace-Id=b4531bf509b08c4a45bdc1679001c912
+POST http://localhost:5000/api/bookings/6/pay -> 201 in 130 ms; X-Correlation-Id=demo-pay-booking; X-Trace-Id=3abaa937be611a4f88bf38b7894ce99e
+GET http://localhost:5000/api/reviews?movieId=3&pageSize=2 -> 200 in 561 ms; X-Correlation-Id=demo-reviews-list; X-Trace-Id=55ffccc7c49dc2ba3c118df9eeddf7d4
+GET http://localhost:5000/api/aggregator/bookings/6/full -> 200 in 1276 ms; X-Correlation-Id=demo-aggregate-booking; X-Trace-Id=0b557c0a72d482a759109315700da429
+GET http://localhost:5000/api/aggregator/movies/3/full -> 200 in 194 ms; X-Correlation-Id=demo-aggregate-movie; X-Trace-Id=94a337ceda8411d0bd371b06a911422e
+GET http://localhost:14171/api/movies/3 -> 200 in 21 ms; X-Correlation-Id=demo-direct-catalog; X-Trace-Id=832409e8ac3ff6348e4e5d9d4be5c7b3
+screenshot dashboard-resources.png
+screenshot trace-aggregate-booking.png
+screenshot logs-by-correlation-id.png
+screenshot traces-list.png
+screenshot check-errors-before-stop.png
+reviews-api stopped
+GET http://localhost:5000/api/aggregator/bookings/6/full -> 200 in 4456 ms; X-Correlation-Id=demo-partial-failure; X-Trace-Id=b03c8dfb4c690072249f8c977c95de2c
+GET http://localhost:5000/api/aggregator/movies/3/full -> 200 in 4327 ms; X-Correlation-Id=demo-partial-movie; X-Trace-Id=b4e6439fefe637098ae7f39cc4a76ebe
+screenshot trace-partial-failure.png
+screenshot logs-partial-failure.png
+screenshot dashboard-resources-reviews-stopped.png
+OK

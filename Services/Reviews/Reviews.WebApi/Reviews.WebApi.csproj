@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <!-- Presentation (WebApi): контролери, що лише передають команди/запити в ISender, обробка помилок, Swagger.
+       Посилання на Infrastructure — лише для реєстрації залежностей у Program.cs. -->
+  <PropertyGroup>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <UserSecretsId>cinema-reviews-api-lab04</UserSecretsId>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="8.1.*" />
+    <!-- Лаб. 06: gRPC-сервер, кеш у пам'яті (L1) і Redis (L2) через Aspire-інтеграцію -->
+    <PackageReference Include="Grpc.AspNetCore" Version="2.71.0" />
+    <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="9.0.*" />
+    <PackageReference Include="Aspire.StackExchange.Redis.DistributedCaching" Version="9.4.2" />
+  </ItemGroup>
+  <ItemGroup>
+    <Protobuf Include="Protos\reviews.proto" GrpcServices="Server" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Лаб. 05: спільні налаштування платформи (логування, трасування, health checks) -->
+    <ProjectReference Include="..\..\..\Platform.ServiceDefaults\Platform.ServiceDefaults.csproj" />
+    <ProjectReference Include="..\Reviews.Application\Reviews.Application.csproj" />
+    <ProjectReference Include="..\Reviews.Infrastructure\Reviews.Infrastructure.csproj" />
+  </ItemGroup>
+</Project>

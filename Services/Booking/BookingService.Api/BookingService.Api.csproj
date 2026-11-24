@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <!-- Web/API: контролери, middleware, налаштування хосту. Бачить лише BLL. -->
+  <PropertyGroup>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <UserSecretsId>cinema-booking-api-lab02</UserSecretsId>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="8.1.*" />
+    <!-- Лаб. 06: gRPC-сервер, кеш у пам'яті (L1) і Redis (L2) через Aspire-інтеграцію -->
+    <PackageReference Include="Grpc.AspNetCore" Version="2.71.0" />
+    <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="9.0.*" />
+    <PackageReference Include="Aspire.StackExchange.Redis.DistributedCaching" Version="9.4.2" />
+  </ItemGroup>
+  <ItemGroup>
+    <Protobuf Include="Protos\booking.proto" GrpcServices="Server" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Лаб. 05: спільні налаштування платформи (логування, трасування, health checks) -->
+    <ProjectReference Include="..\..\..\Platform.ServiceDefaults\Platform.ServiceDefaults.csproj" />
+    <ProjectReference Include="..\BookingService.Bll\BookingService.Bll.csproj" />
+  </ItemGroup>
+</Project>

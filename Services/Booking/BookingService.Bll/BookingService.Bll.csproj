@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- BLL: сервіси, інтерфейси сервісів, DTO, профілі мапінгу. Єдиний власник бізнес-логіки. -->
+  <ItemGroup>
+    <PackageReference Include="AutoMapper" Version="15.1.4" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.*" />
+    <!-- Лаб. 06: дворівневий кеш (Caching/): IMemoryCache + IDistributedCache, метрики, health check -->
+    <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="9.0.*" />
+    <PackageReference Include="Microsoft.Extensions.Diagnostics" Version="9.0.*" />
+    <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.Abstractions" Version="9.0.*" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\BookingService.Dal\BookingService.Dal.csproj" />
+    <ProjectReference Include="..\BookingService.Domain\BookingService.Domain.csproj" />
+  </ItemGroup>
+</Project>
