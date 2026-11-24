@@ -3,8 +3,9 @@
 Андрющенко Людмила, група 443-2.
 Лабораторна робота № 5: мікросервісна платформа з YARP Gateway, Aggregator і OpenTelemetry.
 Лабораторна робота № 6: gRPC-виклики та дворівневе кешування (Memory + Redis) — **розділ [7](#7-лаб-06-grpc-і-дворівневе-кешування)**.
+Лабораторна робота № 7: резильєнтність (Polly), бізнес-метрики та health checks — **розділ [8](#8-лаб-07-резильєнтність-бізнес-метрики-та-health-checks)**.
 
-Кожна лабораторна робота лежить в окремій гілці від `main`: `lab-01` … `lab-06`. Гілка `lab-06` продовжує `lab-05`: три сервіси з попередніх лаб зібрано в одне рішення `Platform.slnx` і запущено разом через Aspire AppHost.
+Кожна лабораторна робота лежить в окремій гілці від `main`: `lab-01` … `lab-07`. Гілка `lab-07` продовжує `lab-06`, а та — `lab-05`: три сервіси з попередніх лаб зібрано в одне рішення `Platform.slnx` і запущено разом через Aspire AppHost.
 
 ## 1. Предметна область
 
@@ -24,13 +25,14 @@
 ```
 Platform.slnx
 Platform.AppHost/          AppHost.cs — ресурси й зв'язки (бази, сервіси, Aggregator, Gateway)
-Platform.ServiceDefaults/  Extensions.cs — Serilog, OpenTelemetry, health checks, service discovery, resilience
+Platform.ServiceDefaults/  Extensions.cs — Serilog, OpenTelemetry, health checks (live / ready / startup), service discovery, resilience
                            CorrelationId.cs — middleware + DelegatingHandler для X-Correlation-Id
 Platform.ApiGateway/       YARP: маршрути в appsettings.json, логування маршрутизації
-Platform.Aggregator/       Clients/ (typed HttpClients), Services/ (агрегація, часткові відмови), Controllers/
-Services/Booking/          BookingService.Api | Bll | Dal | Domain | Tests
-Services/Catalog/          CatalogService.Api | Bll | Dal | Domain | Tests
-Services/Reviews/          Reviews.Domain | Application | Infrastructure | WebApi | Tests
+Platform.Aggregator/       Clients/ (HTTP- і gRPC-клієнти), Services/ (агрегація, часткові відмови), Controllers/,
+                           Resilience/ (політики стійкості), Metrics/, HealthChecks/ (Лаб. 07)
+Services/Booking/          BookingService.Api (Protos/, Grpc/, Metrics/, HealthChecks/) | Bll | Dal | Domain | Tests
+Services/Catalog/          CatalogService.Api (Protos/, Grpc/, Metrics/, HealthChecks/) | Bll | Dal | Domain | Tests
+Services/Reviews/          Reviews.Domain | Application | Infrastructure | WebApi (Protos/, Grpc/, Metrics/, HealthChecks/) | Tests
 db/p1  db/p2  db/p3        скрипти баз з Лаб. 01 (SQL Server ×2, MongoDB)
 docs/                      ERD, приклади, скріни Лаб. 05, контрольні питання
 ```
@@ -137,7 +139,7 @@ curl -X POST http://localhost:5000/api/bookings -H "Content-Type: application/js
 | `GET /api/aggregator/movies/{movieId}/full` | фільм, найближчі сеанси, рейтинг і відгуки — 4 виклики в `Task.WhenAll` |
 
 * (Лаб. 05; з Лаб. 06 основний транспорт — gRPC, див. [7.4](#74-aggregator-на-grpc)) Typed HttpClients з адресами `https+http://booking-api` тощо; `CancellationToken` передається до кожного виклику; `.Result`/`Task.WaitAll` не використовуються.
-* Resilience (`AddStandardResilienceHandler`): спроба 2 с, 1 повтор, загалом 6 с, circuit breaker.
+* Resilience: окрема політика для кожного клієнта відповідно до критичності сервісу — розділ [8.2](#82-resilience-у-aggregator).
 * Кожен виклик логується з тривалістю (`"reviews-api" "рейтинг фільму 3" — відповідь за 97 мс`).
 * **Часткові відмови:** якщо обов'язковий сервіс (booking для картки бронювання) недоступний — 503; якщо недоступний необов'язковий — відповідь 200 з наявними даними та списком `warnings`, без 500.
 * Композитний DTO у camelCase, null-поля не серіалізуються.
@@ -261,7 +263,116 @@ Traces: [афіша gRPC](docs/lab06/trace-board-grpc.png) (2 виклики) п
 
 Відповіді на контрольні питання — [docs/lab06-control-questions.md](docs/lab06-control-questions.md).
 
-## 8. Політика дублювання даних
+## 8. Лаб. 07: резильєнтність, бізнес-метрики та health checks
+
+### 8.1. Де що лежить
+
+| Що | Де |
+|---|---|
+| Standard Resilience Handler для всіх HttpClient і gRPC-клієнтів (`ConfigureHttpClientDefaults`), Meter-и бізнес-метрик і `Polly`, liveness / readiness endpoints | [Platform.ServiceDefaults/Extensions.cs](Platform.ServiceDefaults/Extensions.cs), [HealthResponseWriter.cs](Platform.ServiceDefaults/HealthResponseWriter.cs) |
+| Клієнти Aggregator: `RemoveAllResilienceHandlers()` → `AddStandardResilienceHandler()` з політикою сервісу; gRPC — `ConfigureChannel(ServiceConfig з RetryPolicy)` | [Platform.Aggregator/Program.cs](Platform.Aggregator/Program.cs) |
+| Параметри політик (retry, circuit breaker, таймаути), логування `OnOpened` / `OnHalfOpened` / `OnClosed` і `OnRetry`, gRPC `RetryPolicy` | [Platform.Aggregator/Resilience/ServicePolicies.cs](Platform.Aggregator/Resilience/ServicePolicies.cs) |
+| Graceful degradation Redis | `TryL2Async` у `Caching/TwoLevelCache.cs` ([Catalog](Services/Catalog/CatalogService.Bll/Caching/TwoLevelCache.cs), [Booking](Services/Booking/BookingService.Bll/Caching/TwoLevelCache.cs), [Reviews](Services/Reviews/Reviews.Application/Caching/TwoLevelCache.cs)), [Aggregator/Services/AggregateCache.cs](Platform.Aggregator/Services/AggregateCache.cs); `BacklogPolicy.FailFast` у `Program.cs` |
+| Класи бізнес-метрик (Counter, Histogram, ObservableGauge) | [BookingService.Api/Metrics](Services/Booking/BookingService.Api/Metrics), [CatalogService.Api/Metrics](Services/Catalog/CatalogService.Api/Metrics), [Reviews.WebApi/Metrics](Services/Reviews/Reviews.WebApi/Metrics), [Platform.Aggregator/Metrics](Platform.Aggregator/Metrics) |
+| Health checks SQL Server / MongoDB / Redis (Degraded), gRPC Health Checking Protocol | `Program.cs` сервісів + власні перевірки в `<Сервіс>.Api/HealthChecks/` ([Booking](Services/Booking/BookingService.Api/HealthChecks), [Catalog](Services/Catalog/CatalogService.Api/HealthChecks), [Reviews](Services/Reviews/Reviews.WebApi/HealthChecks)) |
+| Перевірка gRPC-залежностей Aggregator (`Health.HealthClient`, дедлайн 2 с) | [Platform.Aggregator/HealthChecks/GrpcDependencyHealthCheck.cs](Platform.Aggregator/HealthChecks/GrpcDependencyHealthCheck.cs) |
+| `WithHttpHealthCheck("/health")` для кожного сервісу | [Platform.AppHost/AppHost.cs](Platform.AppHost/AppHost.cs) |
+
+### 8.2. Resilience у Aggregator
+
+**Standard Resilience Handler** (пакет `Microsoft.Extensions.Http.Resilience` на основі Polly) підключено один раз у `ConfigureHttpClientDefaults` — він діє для кожного `HttpClient` і кожного gRPC-клієнта, бо їх створює та сама фабрика. П'ять стратегій від зовнішньої до внутрішньої: rate limiter → загальний таймаут → retry → circuit breaker → таймаут спроби. Сервіси (booking, catalog, reviews) працюють зі значеннями за замовчуванням.
+
+Aggregator залежить від трьох сервісів різної критичності, тому для **кожного** його клієнта стандартний обробник спершу прибирається (`RemoveAllResilienceHandlers()`), а потім додається власний (`AddStandardResilienceHandler()` + `ApplyPolicy(...)`). Другий `AddStandardResilienceHandler()` поверх обробника з ServiceDefaults нашарував би повтори (3 × 3 спроби) і таймаути.
+
+| Параметр | **catalog-api** (критичний) | **booking-api** (обов'язковий) | **reviews-api** (некритичний) | За замовчуванням |
+|---|---|---|---|---|
+| Retry: повторів, затримка | **4**, 200 мс, exponential + jitter | 3, 200 мс, exponential + jitter | **1**, 100 мс, exponential + jitter | 3, 2 с |
+| Повтор POST/PUT/DELETE (HTTP-клієнти) | ні (`DisableForUnsafeHttpMethods`) | ні | ні | так |
+| HTTP-повтор gRPC-клієнта | лише таймаут спроби | лише таймаут спроби | лише таймаут спроби | — |
+| Таймаут спроби | 2 с | 2 с | **1 с** | 10 с |
+| Загальний таймаут | 15 с (≥ 5 × 2 с + 3 с затримок) | 10 с (≥ 4 × 2 с + 1,4 с) | **3 с** (≥ 2 × 1 с + 0,1 с) | 30 с |
+| Circuit breaker: FailureRatio | **0,3** (чутливий) | 0,5 | **0,7** (толерантний) | 0,1 |
+| MinimumThroughput | 4 | 6 | 8 | 100 |
+| SamplingDuration (≥ 2 × таймаут спроби) | 20 с | 20 с | 10 с | 30 с |
+| BreakDuration | 10 с | 15 с | 15 с | 5 с |
+| gRPC `RetryPolicy`: MaxAttempts, backoff | 4, 0,2 → 1 с | 3, 0,2 → 1 с | 2, 0,1 → 0,5 с | — |
+
+**Чому такі значення:**
+* **catalog-api** — без фільму й сеансу картку не зібрати, тому сервіс критичний: більше повторів, щоб пережити короткий перезапуск, і найчутливіший breaker (30 % збоїв), щоб не засипати запитами сервіс, який уже падає. Короткий BreakDuration (10 с) — щоб швидше повернути критичні дані.
+* **booking-api** — обов'язковий для картки бронювання (без нього Aggregator повертає 503), але не потрібен для сторінки фільму й афіші; середні значення.
+* **reviews-api** — рейтинг і відгуки необов'язкові: Aggregator і без них поверне сторінку з `warnings` (Лаб. 05). Тому один повтор і таймаут спроби 1 с: користувач отримує часткову відповідь за ~2 с, а не чекає 30 с. Breaker толерантний (70 %), але при повній недоступності розмикається після 8 невдалих спроб — далі виклики відхиляються миттєво.
+* **MinimumThroughput** зменшено з 100 до 4–8: на навчальному стенді за 10–20 с стільки запитів не набирається, і breaker ніколи б не спрацював.
+* **SamplingDuration ≥ 2 × AttemptTimeout** — інакше валідація `HttpStandardResilienceOptions` не пропустить налаштування на старті; **загальний таймаут більший за суму всіх спроб і затримок**, інакше повтори не встигли б виконатися.
+* Повтори лише для ідемпотентних операцій: Aggregator лише читає (GET і gRPC-методи читання), а `DisableForUnsafeHttpMethods()` на HTTP-клієнтах не дає повторити POST / PUT / DELETE (наприклад, створення бронювання), якщо сервер відповів помилкою.
+
+**gRPC.** gRPC повертає `Unavailable` / `DeadlineExceeded` як статус у трейлерах відповіді з HTTP 200, тому HTTP-обробник їх не бачить і не повторює. Повтори за gRPC-статусами робить вбудована `RetryPolicy` каналу (`ConfigureChannel(channel => channel.ServiceConfig = …)`, коди `Unavailable` і `ResourceExhausted`; з'єднання, яке відхилив сервер, gRPC-клієнт теж перетворює на `Unavailable`). Щоб повтори двох рівнів не множилися (2 × 2), кожен тип збою повторює рівно один рівень: HTTP-обробник gRPC-клієнта повторює **лише таймаут спроби** (`TimeoutRejectedException` від Polly gRPC отримує як `Internal` і сам не повторює), решту — `RetryPolicy` каналу. Усі RPC, які викликає Aggregator, — читання, тож повтор безпечний. Загальний час обмежує дедлайн виклику 3 с (Лаб. 06).
+
+Перевірено на логах: `DisableForUnsafeHttpMethods()` вимикає повтор, лише коли сервер повернув HTTP-відповідь; якщо спроба закінчилася винятком (таймаут, обрив з'єднання), повтор відбувається навіть для POST. Тому для gRPC-клієнтів, де кожен виклик — POST, умову повтору (`ShouldHandle`) задано явно.
+
+**Логування й метрики.** `OnRetry` (Warning: номер спроби, затримка, причина), `OnOpened` (Error, BreakDuration і причина), `OnHalfOpened` (Warning), `OnClosed` (Information) — категорія `Platform.Aggregator.Resilience`, з CorrelationId і TraceId запиту. Власні логи Polly (категорія `Polly`, рівень Information) і Meter `Polly` (`resilience.polly.strategy.events` з тегами `event.name`, `pipeline.name`; `resilience.polly.pipeline.duration`; `resilience.polly.strategy.attempt.duration`) підключено в ServiceDefaults. `pipeline.name` = `<клієнт>-standard`, наприклад `ReviewsClient-standard`, `CatalogGrpcClient-standard`.
+
+### 8.3. Graceful degradation Redis
+
+* Кожна операція з Redis у `TwoLevelCache` (L2) і `AggregateCache` — у `try/catch`: збій логується Warning («Redis недоступний… працюю з L1 і БД»), лічильник `cache.errors`, запит іде в базу. Після збою L2 пропускається 30 с, щоб не платити тайм-аут на кожному запиті.
+* `BacklogPolicy.FailFast` у налаштуваннях клієнта Redis: коли з'єднання немає, команда падає одразу, а не чекає 1 с у черзі. Без цього reviews-api з 1-секундним таймаутом спроби в Aggregator не встигав би відповісти, поки Redis лежить.
+* Перепідключення `ConnectionMultiplexer` робить Aspire-інтеграція (`AbortOnConnectFail = false`).
+* Перевірка: Redis зупинено → `GET /api/movies/2` 200 за 42 мс, картка бронювання 200 за 0,3 с (з бази, без кешу), `/health/ready` усіх сервісів — 200 `Degraded`.
+
+### 8.4. Бізнес-метрики
+
+Кожен сервіс має клас метрик у `<Сервіс>.Api/Metrics/`: Meter створюється через `IMeterFactory`, назва Meter = назва сервісу (`BookingService.Api`, `CatalogService.Api`, `Reviews.WebApi`, `Platform.Aggregator`), клас — Singleton. Усі Meter-и й `Polly` підключено в ServiceDefaults (`AddMeter(BusinessMeters)`, `AddMeter("Polly")`).
+
+| Сервіс | Counter | Histogram (мс, усі виконання) | ObservableGauge |
+|---|---|---|---|
+| booking-api | `bookings.created` (`booking.status`, `booking.channel`), `bookings.confirmed`, `bookings.paid` (`payment.provider`), `bookings.issued`, `bookings.cancelled` | `bookings.operation.duration` (`booking.operation`, `operation.result`) | `bookings.current` (`booking.status`), `bookings.awaiting_validation`, `bookings.awaiting_payment` |
+| catalog-api | `movies.created`, `movies.updated` (`movie.change`), `movies.deleted`, `screenings.scheduled` / `screenings.price_changed` (`screening.format`), `screenings.cancelled` | `catalog.operation.duration` | `catalog.screenings.upcoming`, `catalog.movies.active`, `catalog.cache.entries` |
+| reviews-api | `reviews.created` (`review.rating` 1–5), `reviews.updated`, `reviews.deleted`, `reviews.comments.added`, `discussions.created`, `discussions.closed` | `reviews.operation.duration` | `reviews.total`, `discussions.open` |
+| aggregator | `aggregator.responses` (`aggregator.endpoint`, `aggregator.transport`, `aggregator.result`, `cache.result`), `aggregator.partial_responses` | `aggregator.request.duration` | — |
+
+* Лічильник збільшується одразу після успішної операції; тривалість записується `MeasureAsync` для **всіх** виконань, включно з невдалими (`operation.result = failure` для 404, 409, 400).
+* Gauge читає знімок (оновлюється фоновим сервісом раз на 15–30 с), тож під час збору метрик немає запитів до БД.
+* **Кардинальність:** теги лише з малою кількістю значень і однаковими назвами в усіх сервісах — `operation.result` (success / failure), статус (6 значень), канал (3), провайдер оплати (4), формат сеансу (4), оцінка (5). Id бронювань, клієнтів, фільмів і запитів у теги не потрапляють: кожна комбінація значень тегів — окремий часовий ряд.
+
+**Нормальні діапазони** (на стенді): `bookings.operation.duration` для create / confirm / pay — 15–60 мс, понад 200 мс — привід дивитися trace; `resilience.polly.strategy.events{event.name=OnRetry}` за нормальної роботи — 0, серія `OnCircuitOpened` вказує на проблему в сервісі, до якого звертаються; `aggregator.partial_responses` — 0.
+
+### 8.5. Health checks
+
+| Endpoint | Перевірки (тег) | Призначення |
+|---|---|---|
+| `/health/live` | лише `self` (тег `live`), < 5 мс | liveness: процес живий; збій → перезапуск |
+| `/health/ready` | тег `ready`: база, власна перевірка схеми / міграцій / індексів, Redis, gRPC-залежності (Aggregator) | readiness: можна приймати трафік; збій → виключення з балансування |
+| `/health/startup` | тег `startup`: схема / міграції / індекси | для сервісів із повільним стартом (Kubernetes, Лаб. 10) |
+| `/health` | усі перевірки | його опитує Aspire (`WithHttpHealthCheck`) |
+
+* Відповіді — JSON з деталями кожної перевірки: статус, опис, теги, тривалість, текст помилки, дані. Healthy / Degraded → 200, Unhealthy → 503.
+* Endpoints публікуються **в усіх середовищах**, а не лише в Development, як у шаблоні: їх використають probes Kubernetes у Лаб. 10. Секретів відповіді не містять.
+* **SQL Server** (`AspNetCore.HealthChecks.SqlServer`): `AddSqlServer(…, healthQuery: "SELECT 1;", name: "booking-db" / "catalog-db", tags: ["database", "sql", "ready"], timeout: 5 с)`; з'єднання перевірки має Connect Timeout 3 с, щоб недоступна база давала Unhealthy за 3 с, а не за 15.
+* **MongoDB** (`AspNetCore.HealthChecks.MongoDb`): `AddMongoDb(…, name: "reviews-db", tags: ["database", "mongodb", "ready"], timeout: 5 с)` — ping.
+* **Redis** (`AspNetCore.HealthChecks.Redis`): `AddRedis(…, name: "redis-cache", failureStatus: HealthStatus.Degraded, timeout: 3 с)` — PING через той самий `IConnectionMultiplexer`. Кеш необов'язковий, тому його недоступність робить сервіс Degraded, а не Unhealthy. Вбудовану перевірку Aspire-інтеграції Redis вимкнено (`DisableHealthChecks = true`), бо вона давала б Unhealthy.
+* **Власні перевірки** (`<Сервіс>.Api/HealthChecks/`): `BookingSchemaHealthCheck` — у базі є таблиці й процедури Лаб. 01; `CatalogMigrationsHealthCheck` — усі міграції EF Core застосовано; `MongoIndexesHealthCheck` — створено індекси Лаб. 04 (унікальний `ux_author_movie`).
+* **gRPC Health Checking Protocol**: у кожному сервісі `AddGrpcHealthChecks()` (сервіс `""` відповідає за перевірками з тегом `ready`, без кешу результатів) і `MapGrpcHealthChecksService()`. В Aggregator `GrpcDependencyHealthCheck` викликає `Health.HealthClient.CheckAsync` з дедлайном 2 с; `RpcException` → збій зі статусом реєстрації, Warning у лозі. Клієнти Health — без resilience-обробників: перевірка показує стан «тут і зараз». Статус збою відповідає критичності: booking-api, catalog-api — Unhealthy, reviews-api — Degraded.
+* **AppHost:** `WithHttpHealthCheck("/health")` для booking-api, catalog-api, reviews-api, aggregator і gateway. Dashboard показує стан ресурсу, а `WaitFor` чекає, поки залежність стане здоровою (Aggregator стартує, коли три сервіси Healthy).
+
+### 8.6. Перевірки «Перед здачею» і скріни
+
+Сценарій — [docs/lab07/scripts/demo.js](docs/lab07/scripts/demo.js) (reviews-api зупиняється й запускається кнопками Dashboard), вивід — [docs/lab07/demo-output.txt](docs/lab07/demo-output.txt), хронологія збою reviews-api — [docs/lab07/reviews-down-timeline.json](docs/lab07/reviews-down-timeline.json).
+
+| Перевірка | Результат | Скріни |
+|---|---|---|
+| Зупинено reviews-api | перші 2 запити (HTTP і gRPC): по дві спроби з таймаутом 1 с → 200 за ~2,2 с з двома `warnings`; у логах `OnRetry` | [логи HTTP](docs/lab07/logs-retry-http.png), [логи gRPC](docs/lab07/logs-retry-grpc.png), [trace HTTP](docs/lab07/trace-retry-http.png), [trace gRPC](docs/lab07/trace-retry-grpc.png) |
+| Серія збоїв | після 8 невдалих спроб `OnCircuitOpened` (Error); наступні запити — 200 з `warnings` за **10–20 мс**, без звернення до reviews-api | [логи OnCircuitOpened](docs/lab07/logs-circuit-opened-http.png), [fast-fail](docs/lab07/logs-circuit-open-fast-fail.png), [trace](docs/lab07/trace-circuit-open-fast-fail.png) |
+| Після BreakDuration | reviews-api знову запущено; пробний запит (`OnCircuitHalfOpened`) успішний → `OnCircuitClosed`; далі повна відповідь без `warnings` | [логи](docs/lab07/logs-circuit-closed.png) |
+| Метрика Polly | `resilience.polly.strategy.events` з фільтром `event.name` | [OnRetry](docs/lab07/metrics-polly-onretry.png), [OnCircuitOpened](docs/lab07/metrics-polly-oncircuitopened.png), [retry + переходи ланцюга](docs/lab07/metrics-polly-retry-and-circuit.png), [усі події](docs/lab07/metrics-polly-strategy-events.png), [pipeline.duration](docs/lab07/metrics-polly-pipeline-duration.png), [attempt.duration](docs/lab07/metrics-polly-attempt-duration.png) |
+| Зупинено Redis | сервіси відповідають (42 мс фільм, 0,3 с картка бронювання з БД); `/health/ready` → 200 `Degraded` (`redis-cache: Degraded`) | [/health/ready](docs/lab07/health-ready-redis-degraded.png), [JSON](docs/lab07/health-ready-catalog-redis-degraded.json), [логи](docs/lab07/logs-redis-down-fallback.png) |
+| Зупинено SQL Server | booking-api: `/health/live` → **200**, `/health/ready` → **503** (`booking-db`, `booking-db-schema` Unhealthy) за 3 с; Aggregator `/health/ready` → 503 (booking-api, catalog-api NOT_SERVING через gRPC health) | [ready](docs/lab07/health-ready-sql-down.png), [live](docs/lab07/health-live-sql-down.png), [JSON](docs/lab07/health-sql-down-booking.json), [Resources](docs/lab07/dashboard-resources-sql-down.png) |
+| Кілька бронювань | `bookings.created` зростає, фільтр за `booking.status` і `booking.channel`; `bookings.operation.duration` — розподіл, у тому числі `failure` (409, 404) | [bookings.created](docs/lab07/metrics-bookings-created.png), [duration](docs/lab07/metrics-bookings-operation-duration.png), [gauge](docs/lab07/metrics-bookings-current-gauge.png), [aggregator.responses](docs/lab07/metrics-aggregator-responses.png), [catalog gauge](docs/lab07/metrics-catalog-screenings-upcoming.png) |
+| Resources | усі сервіси з `WithHttpHealthCheck`: зелений — Healthy, під час збою SQL Server — `Running (Unhealthy)` | [усе працює](docs/lab07/dashboard-resources.png), [SQL Server зупинено](docs/lab07/dashboard-resources-sql-down.png) |
+
+Скільки коштують повтори: коли reviews-api недоступний, запит із політикою «1 повтор, спроба 1 с» відповідає за ~2,2 с (на Windows відмова в з'єднанні з `localhost` приходить через ~2 с: спершу `::1`, потім `127.0.0.1`, тому кожна спроба обривається таймаутом 1 с). Без власної політики (значення за замовчуванням: 3 повтори від 2 с, спроба 10 с) той самий запит чекав би до 30 с. Після розмикання ланцюга часткова відповідь приходить за 10–20 мс. Коли всі сервіси працюють, повтори не відбуваються і затримку не додають.
+
+Відповіді на контрольні питання — [docs/lab07-control-questions.md](docs/lab07-control-questions.md).
+
+## 9. Політика дублювання даних
 
 Кожне поле має одного власника; інші сервіси зберігають знімок або копію (з Лаб. 01).
 
@@ -276,8 +387,9 @@ Traces: [афіша gRPC](docs/lab06/trace-board-grpc.png) (2 виклики) п
 
 Aggregator нічого не зберігає: він читає актуальні дані у власників і показує розбіжності (наприклад, сеанс скасовано в каталозі, а в копії booking — ні) як `warnings`.
 
-## 9. Документи
+## 10. Документи
 
+* [docs/lab07-control-questions.md](docs/lab07-control-questions.md) — відповіді на контрольні питання Лаб. 07;
 * [docs/lab06-control-questions.md](docs/lab06-control-questions.md) — відповіді на контрольні питання Лаб. 06;
 * [docs/lab05-control-questions.md](docs/lab05-control-questions.md) — відповіді на контрольні питання Лаб. 05;
 * [docs/lab01-README.md](docs/lab01-README.md), [docs/lab01-control-questions.md](docs/lab01-control-questions.md) — бази даних (Лаб. 01);

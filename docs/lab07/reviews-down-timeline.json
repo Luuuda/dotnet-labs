@@ -1,0 +1,184 @@
+[
+  {
+    "i": 0,
+    "http": {
+      "status": 200,
+      "ms": 2225,
+      "warnings": [
+        "reviews-api is unavailable: рейтинг фільму 3 — дані цього сервісу відсутні у відповіді",
+        "reviews-api is unavailable: відгуки на фільм 3 — дані цього сервісу відсутні у відповіді"
+      ]
+    },
+    "grpc": {
+      "status": 200,
+      "ms": 2207,
+      "warnings": [
+        "reviews-api is unavailable: рейтинг фільму 3 — дані цього сервісу відсутні у відповіді",
+        "reviews-api is unavailable: відгуки на фільм 3 — дані цього сервісу відсутні у відповіді"
+      ]
+    }
+  },
+  {
+    "i": 1,
+    "http": {
+      "status": 200,
+      "ms": 2164,
+      "warnings": [
+        "reviews-api is unavailable: відгуки на фільм 3 — дані цього сервісу відсутні у відповіді",
+        "reviews-api is unavailable: рейтинг фільму 3 — дані цього сервісу відсутні у відповіді"
+      ]
+    },
+    "grpc": {
+      "status": 200,
+      "ms": 2129,
+      "warnings": [
+        "reviews-api is unavailable: відгуки на фільм 3 — дані цього сервісу відсутні у відповіді",
+        "reviews-api is unavailable: рейтинг фільму 3 — дані цього сервісу відсутні у відповіді"
+      ]
+    }
+  },
+  {
+    "i": 2,
+    "http": {
+      "status": 200,
+      "ms": 14,
+      "warnings": [
+        "reviews-api is unavailable: рейтинг фільму 3 — дані цього сервісу відсутні у відповіді",
+        "reviews-api is unavailable: відгуки на фільм 3 — дані цього сервісу відсутні у відповіді"
+      ]
+    },
+    "grpc": {
+      "status": 200,
+      "ms": 16,
+      "warnings": [
+        "reviews-api is unavailable: рейтинг фільму 3 — дані цього сервісу відсутні у відповіді",
+        "reviews-api is unavailable: відгуки на фільм 3 — дані цього сервісу відсутні у відповіді"
+      ]
+    }
+  },
+  {
+    "i": 3,
+    "http": {
+      "status": 200,
+      "ms": 11,
+      "warnings": [
+        "reviews-api is unavailable: рейтинг фільму 3 — дані цього сервісу відсутні у відповіді",
+        "reviews-api is unavailable: відгуки на фільм 3 — дані цього сервісу відсутні у відповіді"
+      ]
+    },
+    "grpc": {
+      "status": 200,
+      "ms": 18,
+      "warnings": [
+        "reviews-api is unavailable: рейтинг фільму 3 — дані цього сервісу відсутні у відповіді",
+        "reviews-api is unavailable: відгуки на фільм 3 — дані цього сервісу відсутні у відповіді"
+      ]
+    }
+  },
+  {
+    "i": 4,
+    "http": {
+      "status": 200,
+      "ms": 11,
+      "warnings": [
+        "reviews-api is unavailable: рейтинг фільму 3 — дані цього сервісу відсутні у відповіді",
+        "reviews-api is unavailable: відгуки на фільм 3 — дані цього сервісу відсутні у відповіді"
+      ]
+    },
+    "grpc": {
+      "status": 200,
+      "ms": 13,
+      "warnings": [
+        "reviews-api is unavailable: рейтинг фільму 3 — дані цього сервісу відсутні у відповіді",
+        "reviews-api is unavailable: відгуки на фільм 3 — дані цього сервісу відсутні у відповіді"
+      ]
+    }
+  },
+  {
+    "i": 5,
+    "http": {
+      "status": 200,
+      "ms": 13,
+      "warnings": [
+        "reviews-api is unavailable: рейтинг фільму 3 — дані цього сервісу відсутні у відповіді",
+        "reviews-api is unavailable: відгуки на фільм 3 — дані цього сервісу відсутні у відповіді"
+      ]
+    },
+    "grpc": {
+      "status": 200,
+      "ms": 13,
+      "warnings": [
+        "reviews-api is unavailable: рейтинг фільму 3 — дані цього сервісу відсутні у відповіді",
+        "reviews-api is unavailable: відгуки на фільм 3 — дані цього сервісу відсутні у відповіді"
+      ]
+    }
+  },
+  {
+    "i": 6,
+    "http": {
+      "status": 200,
+      "ms": 10,
+      "warnings": [
+        "reviews-api is unavailable: рейтинг фільму 3 — дані цього сервісу відсутні у відповіді",
+        "reviews-api is unavailable: відгуки на фільм 3 — дані цього сервісу відсутні у відповіді"
+      ]
+    },
+    "grpc": {
+      "status": 200,
+      "ms": 13,
+      "warnings": [
+        "reviews-api is unavailable: рейтинг фільму 3 — дані цього сервісу відсутні у відповіді",
+        "reviews-api is unavailable: відгуки на фільм 3 — дані цього сервісу відсутні у відповіді"
+      ]
+    }
+  },
+  {
+    "i": 7,
+    "http": {
+      "status": 200,
+      "ms": 13,
+      "warnings": [
+        "reviews-api is unavailable: рейтинг фільму 3 — дані цього сервісу відсутні у відповіді",
+        "reviews-api is unavailable: відгуки на фільм 3 — дані цього сервісу відсутні у відповіді"
+      ]
+    },
+    "grpc": {
+      "status": 200,
+      "ms": 19,
+      "warnings": [
+        "reviews-api is unavailable: рейтинг фільму 3 — дані цього сервісу відсутні у відповіді",
+        "reviews-api is unavailable: відгуки на фільм 3 — дані цього сервісу відсутні у відповіді"
+      ]
+    }
+  },
+  {
+    "i": "after-recovery",
+    "http": {
+      "status": 200,
+      "ms": 90,
+      "warnings": []
+    },
+    "grpc": {
+      "status": 200,
+      "ms": 32,
+      "warnings": []
+    }
+  },
+  {
+    "i": "after-break",
+    "http": {
+      "status": 200,
+      "ms": 172,
+      "warnings": [
+        "reviews-api is unavailable: відгуки на фільм 3 — дані цього сервісу відсутні у відповіді"
+      ]
+    },
+    "grpc": {
+      "status": 200,
+      "ms": 110,
+      "warnings": [
+        "reviews-api is unavailable: відгуки на фільм 3 — дані цього сервісу відсутні у відповіді"
+      ]
+    }
+  }
+]

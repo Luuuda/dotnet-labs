@@ -1,0 +1,60 @@
+{
+  "status": "Degraded",
+  "totalMs": 2029.3,
+  "checks": [
+    {
+      "name": "booking-api",
+      "status": "Healthy",
+      "description": "booking-api: SERVING (gRPC health)",
+      "tags": [
+        "grpc",
+        "downstream",
+        "ready"
+      ],
+      "ms": 8.7,
+      "error": null,
+      "data": null
+    },
+    {
+      "name": "catalog-api",
+      "status": "Healthy",
+      "description": "catalog-api: SERVING (gRPC health)",
+      "tags": [
+        "grpc",
+        "downstream",
+        "ready"
+      ],
+      "ms": 15.9,
+      "error": null,
+      "data": null
+    },
+    {
+      "name": "reviews-api",
+      "status": "Degraded",
+      "description": "reviews-api недоступний: gRPC DeadlineExceeded",
+      "tags": [
+        "grpc",
+        "downstream",
+        "ready"
+      ],
+      "ms": 2028.9,
+      "error": "Status(StatusCode=\"DeadlineExceeded\", Detail=\"\")",
+      "data": {
+        "grpcStatus": "DeadlineExceeded"
+      }
+    },
+    {
+      "name": "redis-cache",
+      "status": "Healthy",
+      "description": null,
+      "tags": [
+        "cache",
+        "redis",
+        "ready"
+      ],
+      "ms": 7,
+      "error": null,
+      "data": null
+    }
+  ]
+}
