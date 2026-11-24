@@ -1,4 +1,5 @@
 using CatalogService.Bll.Dtos;
+using CatalogService.Bll.IntegrationEvents;
 using CatalogService.Bll.Services;
 using CatalogService.Dal.Abstractions;
 using CatalogService.Domain.Entities;
@@ -13,13 +14,15 @@ public sealed class MovieServiceTests
     private readonly Mock<IUnitOfWork> _uow = new();
     private readonly Mock<IMovieRepository> _movies = new();
     private readonly Mock<IGenreRepository> _genres = new();
+    private readonly RecordingEventPublisher _events = new();
     private readonly MovieService _service;
 
     public MovieServiceTests()
     {
         _uow.SetupGet(u => u.Movies).Returns(_movies.Object);
         _uow.SetupGet(u => u.Genres).Returns(_genres.Object);
-        _service = new MovieService(_uow.Object, MappingTests.CreateMapper(), TimeProvider.System, TestCache.Create(), NullLogger<MovieService>.Instance);
+        _service = new MovieService(_uow.Object, MappingTests.CreateMapper(), TimeProvider.System, TestCache.Create(), _events,
+            NullLogger<MovieService>.Instance);
     }
 
     [Fact]
@@ -74,5 +77,62 @@ public sealed class MovieServiceTests
         Assert.Equal("Новий фільм", dto.Title);
         Assert.Equal("Драма", Assert.Single(dto.Genres).Name);
         _uow.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    // ---------------- Лаб. 08: подія MovieRenamed публікується лише після успішного збереження ----------------
+
+    private Movie SetupExisting(string title)
+    {
+        var movie = new Movie(title, null, 2023, 115, "12+");
+        _movies.Setup(m => m.GetWithDetailsAsync(It.IsAny<int>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+               .ReturnsAsync(movie);
+        return movie;
+    }
+
+    private static UpdateMovieDto Update(string title) => new()
+    {
+        Title = title, ReleaseYear = 2023, DurationMinutes = 115, AgeRating = "12+", RowVersion = Convert.ToBase64String([1])
+    };
+
+    [Fact]
+    public async Task Rename_publishes_MovieRenamed_after_SaveChanges()
+    {
+        SetupExisting("Довбуш");
+        var order = new List<string>();
+        _uow.Setup(u => u.SaveChangesAsync(It.IsAny<CancellationToken>())).Callback(() => order.Add("save")).ReturnsAsync(1);
+        _events.OnPublish = _ => order.Add("publish");
+
+        await _service.UpdateAsync(7, Update("Довбуш. Легенда"), CancellationToken.None);
+
+        Assert.Equal(["save", "publish"], order);
+        var published = Assert.Single(_events.Published);
+        Assert.Equal(CatalogEvents.Exchange, published.Exchange);
+        Assert.Equal(CatalogEvents.RoutingKeys.MovieRenamed, published.RoutingKey);
+        var e = Assert.IsType<MovieRenamedEvent>(published.Event);
+        Assert.Equal((7, "Довбуш", "Довбуш. Легенда"), (e.MovieId, e.OldTitle, e.NewTitle));
+        Assert.NotEqual(Guid.Empty, e.EventId);
+    }
+
+    [Fact]
+    public async Task Failed_save_publishes_nothing()
+    {
+        SetupExisting("Довбуш");
+        _uow.Setup(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new ConflictException("Фільм змінив інший користувач"));
+
+        await Assert.ThrowsAsync<ConflictException>(() => _service.UpdateAsync(7, Update("Довбуш 2"), CancellationToken.None));
+
+        Assert.Empty(_events.Published);
+    }
+
+    [Fact]
+    public async Task Update_without_title_change_publishes_nothing()
+    {
+        SetupExisting("Довбуш");
+        _uow.Setup(u => u.SaveChangesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
+
+        await _service.UpdateAsync(7, Update("Довбуш"), CancellationToken.None);
+
+        Assert.Empty(_events.Published);
     }
 }

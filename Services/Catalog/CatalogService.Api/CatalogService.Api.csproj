@@ -18,6 +18,8 @@
     <PackageReference Include="AspNetCore.HealthChecks.SqlServer" Version="9.0.0" />
     <PackageReference Include="AspNetCore.HealthChecks.Redis" Version="9.0.0" />
     <PackageReference Include="Grpc.AspNetCore.HealthChecks" Version="2.71.0" />
+    <!-- Лаб. 08: RabbitMQ через Aspire-інтеграцію (IConnection, RabbitMQ.Client 7.x, повторні спроби підключення) -->
+    <PackageReference Include="Aspire.RabbitMQ.Client" Version="13.6.5" />
   </ItemGroup>
   <ItemGroup>
     <!-- Контракт gRPC: тут генерується серверна частина; Aggregator підключає той самий файл з GrpcServices="Client" -->
@@ -26,6 +28,7 @@
   <ItemGroup>
     <!-- Лаб. 05: спільні налаштування платформи (логування, трасування, health checks) -->
     <ProjectReference Include="..\..\..\Platform.ServiceDefaults\Platform.ServiceDefaults.csproj" />
+    <ProjectReference Include="..\..\..\Platform.Messaging\Platform.Messaging.csproj" />
     <ProjectReference Include="..\CatalogService.Bll\CatalogService.Bll.csproj" />
   </ItemGroup>
 </Project>

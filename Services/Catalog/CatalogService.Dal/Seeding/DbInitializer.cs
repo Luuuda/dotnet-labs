@@ -8,6 +8,9 @@ namespace CatalogService.Dal.Seeding;
 /// Програмний сідінг — після MigrateAsync(). Довідники (жанри, зали) вже є з міграції (HasData),
 /// тому тут додаються залежні записи: фільми з деталями, зв'язки з жанрами, сеанси.
 /// Ідемпотентний: якщо фільм із такою назвою й роком уже є — він пропускається; повторний запуск нічого не дублює.
+/// Лаб. 08: назву фільму тепер змінюють через API (подія MovieRenamed), тому фільм вважається наявним і тоді, коли
+/// збігаються рік і тривалість (перейменований «Довбуш» не створюється вдруге), а сеанс не додається, якщо зала в цей
+/// час уже зайнята (унікальний індекс IX_Screenings_HallId_StartsAt).
 /// </summary>
 public static class DbInitializer
 {
@@ -62,13 +65,15 @@ public static class DbInitializer
         var halls = await db.Halls.ToDictionaryAsync(h => h.Id, ct);
 
         var existing = await db.Movies.IgnoreQueryFilters()
-            .Select(m => new { m.Title, m.ReleaseYear }).ToListAsync(ct);
+            .Select(m => new { m.Title, m.ReleaseYear, m.DurationMinutes }).ToListAsync(ct);
+        var busySlots = (await db.Screenings.IgnoreQueryFilters().Select(x => new { x.HallId, x.StartsAt }).ToListAsync(ct))
+            .Select(x => (x.HallId, x.StartsAt)).ToHashSet();
         var added = 0;
         var movies = new Dictionary<string, Movie>();
 
         foreach (var s in Movies)
         {
-            if (existing.Any(e => e.Title == s.Title && e.ReleaseYear == s.Year)) continue;   // find-or-create
+            if (existing.Any(e => e.ReleaseYear == s.Year && (e.Title == s.Title || e.DurationMinutes == s.Duration))) continue;   // find-or-create
             var movie = new Movie(s.Title, s.Original, s.Year, s.Duration, s.Age);
             movie.SetDetails(s.Description, s.Director, s.Country, s.Language);
             foreach (var (slug, primary, addedAt) in s.Genres)
@@ -79,7 +84,7 @@ public static class DbInitializer
         }
 
         // сеанси додаються лише для фільмів, створених щойно (інакше — уже є з попереднього запуску)
-        foreach (var s in Screenings.Where(x => movies.ContainsKey(x.Movie)))
+        foreach (var s in Screenings.Where(x => movies.ContainsKey(x.Movie) && !busySlots.Contains((x.Hall, DateTime.Parse(x.StartsAt)))))
         {
             var screening = new Screening(movies[s.Movie], halls[s.Hall], DateTime.Parse(s.StartsAt), s.Format, s.Language, s.Price);
             if (s.Cancelled) screening.Cancel();
