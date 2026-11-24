@@ -34,6 +34,12 @@ public sealed class BookingsService(
             mapper.Map<BookingDto>(await uow.Bookings.GetWithTicketsAsync(id, c)
                                    ?? throw new NotFoundException($"Бронювання {id} не знайдено")), ct))!;
 
+    public async Task<IReadOnlyDictionary<string, int>> GetStatusCountsAsync(CancellationToken ct)
+    {
+        var counts = await uow.Bookings.CountByStatusAsync(ct);
+        return BookingStatus.All.ToDictionary(s => s, s => counts.GetValueOrDefault(s));
+    }
+
     public async Task<PagedResult<BookingSummaryDto>> ListByCustomerAsync(
         Guid customerId, string? status, int page, int pageSize, CancellationToken ct)
     {

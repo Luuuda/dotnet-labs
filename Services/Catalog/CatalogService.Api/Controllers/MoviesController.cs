@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using CatalogService.Api.Infrastructure;
+using CatalogService.Api.Metrics;
 using CatalogService.Bll.Dtos;
 using CatalogService.Bll.Services;
 using FluentValidation;
@@ -11,7 +12,9 @@ namespace CatalogService.Api.Controllers;
 [ApiController]
 [Route("api/movies")]
 [Produces("application/json")]
-public sealed class MoviesController(IMovieService movies, ILogger<MoviesController> logger) : ApiControllerBase
+// Лаб. 07: операції запису вимірюються CatalogMetrics.MeasureAsync (і невдалі теж) і після успіху
+// збільшують лічильник (movies.created, movies.updated, movies.deleted).
+public sealed class MoviesController(IMovieService movies, CatalogMetrics metrics, ILogger<MoviesController> logger) : ApiControllerBase
 {
     /// <summary>
     /// Список фільмів з пагінацією, фільтрацією та сортуванням (виконується в SQL: WHERE / ORDER BY / OFFSET-FETCH).
@@ -45,7 +48,8 @@ public sealed class MoviesController(IMovieService movies, ILogger<MoviesControl
         CreateMovieDto input, [FromServices] IValidator<CreateMovieDto> validator, CancellationToken ct)
     {
         if (!await IsValidAsync(validator, input, ct)) return ValidationProblem(ModelState);
-        var created = await movies.CreateAsync(input, ct);
+        var created = await metrics.MeasureAsync("movie_create", () => movies.CreateAsync(input, ct));
+        metrics.MovieCreated();
         Activity.Current?.SetTag("movie.id", created.Id);
         logger.LogInformation("API: фільм {MovieId} «{Title}» додано до каталогу", created.Id, created.Title);
         return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
@@ -61,7 +65,9 @@ public sealed class MoviesController(IMovieService movies, ILogger<MoviesControl
         int id, UpdateMovieDto input, [FromServices] IValidator<UpdateMovieDto> validator, CancellationToken ct)
     {
         if (!await IsValidAsync(validator, input, ct)) return ValidationProblem(ModelState);
-        return Ok(await movies.UpdateAsync(id, input, ct));
+        var updated = await metrics.MeasureAsync("movie_update", () => movies.UpdateAsync(id, input, ct));
+        metrics.MovieUpdated("details");
+        return Ok(updated);
     }
 
     /// <summary>Видалити фільм (soft delete). Якщо є заплановані сеанси — 409.</summary>
@@ -71,7 +77,8 @@ public sealed class MoviesController(IMovieService movies, ILogger<MoviesControl
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> Delete(int id, CancellationToken ct)
     {
-        await movies.DeleteAsync(id, ct);
+        await metrics.MeasureAsync("movie_delete", () => movies.DeleteAsync(id, ct));
+        metrics.MovieDeleted();
         Activity.Current?.SetTag("movie.id", id);
         logger.LogInformation("API: фільм {MovieId} знято з каталогу", id);
         return NoContent();
@@ -87,7 +94,9 @@ public sealed class MoviesController(IMovieService movies, ILogger<MoviesControl
         int id, AssignGenreDto input, [FromServices] IValidator<AssignGenreDto> validator, CancellationToken ct)
     {
         if (!await IsValidAsync(validator, input, ct)) return ValidationProblem(ModelState);
-        return Ok(await movies.AddGenreAsync(id, input, ct));
+        var movie = await metrics.MeasureAsync("movie_genre_add", () => movies.AddGenreAsync(id, input, ct));
+        metrics.MovieUpdated("genres");
+        return Ok(movie);
     }
 
     /// <summary>Відв'язати жанр.</summary>
@@ -97,7 +106,8 @@ public sealed class MoviesController(IMovieService movies, ILogger<MoviesControl
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> RemoveGenre(int id, int genreId, CancellationToken ct)
     {
-        await movies.RemoveGenreAsync(id, genreId, ct);
+        await metrics.MeasureAsync("movie_genre_remove", () => movies.RemoveGenreAsync(id, genreId, ct));
+        metrics.MovieUpdated("genres");
         return NoContent();
     }
 }

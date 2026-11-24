@@ -95,6 +95,17 @@ public sealed class BookingRepository(SqlConnection connection, Func<SqlTransact
             return (IReadOnlyList<(int, int)>)rows.Select(r => (r.SeatRow, r.SeatNumber)).ToList();
         }, ct);
 
+    public Task<IReadOnlyDictionary<string, int>> CountByStatusAsync(CancellationToken ct = default) =>
+        ExecuteAsync(async () =>
+        {
+            var rows = await Connection.QueryAsync<(string Status, int Count)>(Command("""
+                SELECT Status, COUNT(*) AS [Count] FROM dbo.Bookings
+                WHERE IsDeleted = 0
+                GROUP BY Status
+                """, null, ct));
+            return (IReadOnlyDictionary<string, int>)rows.ToDictionary(r => r.Status, r => r.Count);
+        }, ct);
+
     public Task AddDetailsAsync(BookingDetails details, CancellationToken ct = default) => ExecuteAsync(
         () => Connection.ExecuteAsync(Command("""
             INSERT INTO dbo.BookingDetails (BookingId, ContactEmail, ContactPhone, Channel, Comment)

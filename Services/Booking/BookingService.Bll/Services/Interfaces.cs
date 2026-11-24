@@ -37,4 +37,6 @@ public interface IBookingService
     Task<BookingDto> CancelAsync(long id, BookingActionDto? action, CancellationToken ct);
     Task<IReadOnlyList<PaymentDto>> GetPaymentsAsync(long id, CancellationToken ct);
     Task DeleteAsync(long id, CancellationToken ct);
+    /// <summary>Лаб. 07: кількість бронювань у кожному статусі (усі статуси, відсутні — 0) для gauge-метрик.</summary>
+    Task<IReadOnlyDictionary<string, int>> GetStatusCountsAsync(CancellationToken ct);
 }
