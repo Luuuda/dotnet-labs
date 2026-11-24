@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Лаб. 08: спільна інфраструктура подієвої взаємодії через RabbitMQ (RabbitMQ.Client 7.x, асинхронний API IChannel):
+       базовий record інтеграційної події, IEventPublisher, передача контексту трасування (W3C traceparent),
+       декларативна топологія (topic exchange, черги, DLX / DLQ), базовий споживач з ack / retry / DLQ.
+       Підключення (IConnection) кожен сервіс реєструє сам: builder.AddRabbitMQClient("messaging"). -->
+  <PropertyGroup>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="RabbitMQ.Client" Version="7.1.2" />
+    <PackageReference Include="OpenTelemetry.Api" Version="1.15.3" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="9.0.*" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.*" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.*" />
+    <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks" Version="9.0.*" />
+  </ItemGroup>
+</Project>
