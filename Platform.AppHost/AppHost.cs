@@ -1,5 +1,7 @@
 // Оркестрація платформи «Кінотеатр» (.NET Aspire). Тут лише опис ресурсів і зв'язків між ними — без бізнес-логіки.
 // Порядок запуску задається WaitFor: бази → мікросервіси → Aggregator → Gateway.
+// Лаб. 07: кожен сервіс має WithHttpHealthCheck("/health") — Dashboard показує його стан (Healthy / Degraded /
+// Unhealthy), а WaitFor чекає, поки залежність стане ЗДОРОВОЮ (усі її перевірки пройшли), а не лише запуститься.
 
 var builder = DistributedApplication.CreateBuilder(args);
 
@@ -35,26 +37,30 @@ var booking = builder.AddProject<Projects.BookingService_Api>("booking-api")
     .WithHttpEndpoint(port: 5181, name: "grpc", isProxied: false)
     .WithReference(bookingDb).WaitFor(bookingDb)
     .WithReference(redis).WaitFor(redis)
-    .WithEnvironment("Database__ApplyScriptsOnStartup", "true");      // порожня база → скрипти db/p1
+    .WithEnvironment("Database__ApplyScriptsOnStartup", "true")       // порожня база → скрипти db/p1
+    .WithHttpHealthCheck("/health");                                  // Лаб. 07: SQL Server, схема, Redis (Degraded)
 
 var catalog = builder.AddProject<Projects.CatalogService_Api>("catalog-api")
     .WithEndpoint("http", e => e.IsProxied = false)
     .WithHttpEndpoint(port: 5281, name: "grpc", isProxied: false)
     .WithReference(catalogDb).WaitFor(catalogDb)
     .WithReference(redis).WaitFor(redis)                              // дворівневий кеш каталогу (L2)
-    .WithEnvironment("Database__SeedOnStartup", "true");              // міграції EF Core і сідінг на старті
+    .WithEnvironment("Database__SeedOnStartup", "true")               // міграції EF Core і сідінг на старті
+    .WithHttpHealthCheck("/health");                                  // Лаб. 07: SQL Server, міграції, Redis (Degraded)
 
 var reviews = builder.AddProject<Projects.Reviews_WebApi>("reviews-api")
     .WithEndpoint("http", e => e.IsProxied = false)
     .WithHttpEndpoint(port: 5381, name: "grpc", isProxied: false)
     .WithReference(reviewsDb).WaitFor(reviewsDb)
-    .WithReference(redis).WaitFor(redis);                             // індекси й сідінг на старті
+    .WithReference(redis).WaitFor(redis)                              // індекси й сідінг на старті
+    .WithHttpHealthCheck("/health");                                  // Лаб. 07: MongoDB, індекси, Redis (Degraded)
 
 // ---------- Aggregator: паралельно опитує три сервіси ----------
 var aggregator = builder.AddProject<Projects.Platform_Aggregator>("aggregator")
     .WithReference(booking).WithReference(catalog).WithReference(reviews)
     .WithReference(redis).WaitFor(redis)                              // Лаб. 06: кеш агрегованих відповідей
-    .WaitFor(booking).WaitFor(catalog).WaitFor(reviews);
+    .WaitFor(booking).WaitFor(catalog).WaitFor(reviews)               // Лаб. 07: чекає, поки сервіси стануть Healthy
+    .WithHttpHealthCheck("/health");                                  // Лаб. 07: gRPC health трьох сервісів, Redis
 
 // ---------- Gateway: єдина точка входу на фіксованому порту 5000 ----------
 builder.AddProject<Projects.Platform_ApiGateway>("gateway")
@@ -62,6 +68,7 @@ builder.AddProject<Projects.Platform_ApiGateway>("gateway")
     .WithExternalHttpEndpoints()
     .WithReference(booking).WithReference(catalog).WithReference(reviews)
     .WithReference(aggregator)
-    .WaitFor(aggregator);
+    .WaitFor(aggregator)
+    .WithHttpHealthCheck("/health");                                  // Лаб. 07: процес Gateway (self)
 
 builder.Build().Run();

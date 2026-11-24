@@ -10,6 +10,10 @@
     <PackageReference Include="Grpc.AspNetCore" Version="2.71.0" />
     <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="9.0.*" />
     <PackageReference Include="Aspire.StackExchange.Redis.DistributedCaching" Version="9.4.2" />
+    <!-- Лаб. 07: health checks баз і Redis (Xabaril), gRPC Health Checking Protocol -->
+    <PackageReference Include="AspNetCore.HealthChecks.SqlServer" Version="9.0.0" />
+    <PackageReference Include="AspNetCore.HealthChecks.Redis" Version="9.0.0" />
+    <PackageReference Include="Grpc.AspNetCore.HealthChecks" Version="2.71.0" />
   </ItemGroup>
   <ItemGroup>
     <Protobuf Include="Protos\booking.proto" GrpcServices="Server" />

@@ -2,11 +2,16 @@ using System.Diagnostics;
 using System.Reflection;
 using System.Text;
 using BookingService.Api.Grpc;
+using BookingService.Api.HealthChecks;
 using BookingService.Api.Infrastructure;
+using BookingService.Api.Metrics;
 using BookingService.Bll.Caching;
 using BookingService.Bll;
 using Platform.ServiceDefaults;
 using Platform.ServiceDefaults.Grpc;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
+using StackExchange.Redis;
+using static Microsoft.Extensions.Hosting.Extensions;
 
 Console.OutputEncoding = Encoding.UTF8;   // українські повідомлення в консолі без «кракозябр»
 
@@ -35,18 +40,62 @@ builder.Services.AddMemoryCache(o =>
     o.TrackStatistics = true;
 });
 // L2 — Redis (ConnectionStrings:redis від AppHost); без Redis — кеш у пам'яті (тести, окремий запуск)
-if (builder.Configuration.GetConnectionString("redis") is { Length: > 0 })
-    builder.AddRedisDistributedCache("redis", configureOptions: o =>
+var redisConfigured = builder.Configuration.GetConnectionString("redis") is { Length: > 0 };
+if (redisConfigured)
+    builder.AddRedisDistributedCache("redis",
+        // Лаб. 07: перевірку Redis реєструємо самі зі статусом Degraded; вбудована перевірка Aspire дала б Unhealthy
+        configureSettings: settings => settings.DisableHealthChecks = true,
+        configureOptions: o =>
     {
         o.AbortOnConnectFail = false;           // недоступний Redis не валить старт сервісу
         o.ConnectTimeout = 2000;                // збій кешу коштує ≤ 2 с, далі L2 пропускається на 30 с (TwoLevelCache)
         o.AsyncTimeout = 1000;
         o.SyncTimeout = 1000;
         o.UseIPv4Loopback();                    // localhost → 127.0.0.1: на Windows спроба ::1 додає ~2 с до з'єднання
+        // Лаб. 07: graceful degradation — коли Redis недоступний, команди падають одразу (FailFast), а не чекають
+        // у черзі AsyncTimeout; TwoLevelCache / AggregateCache ловлять помилку й читають з БД без затримки.
+        o.BacklogPolicy = StackExchange.Redis.BacklogPolicy.FailFast;
     });
 else
     builder.Services.AddDistributedMemoryCache();
-builder.Services.AddHealthChecks().AddCheck<CacheStatisticsHealthCheck>("booking-cache");
+
+// --- Лаб. 07: health checks (теги розподіляють їх між /health/live, /health/ready і /health/startup) ---------------
+// Окреме з'єднання для перевірок: Connect Timeout 3 с, щоб недоступний SQL Server давав Unhealthy за секунди,
+// а не за 15 с тайм-ауту підключення з рядка сервісу (readiness має відповідати швидше, ніж його опитують).
+var healthConnectionString = new Microsoft.Data.SqlClient.SqlConnectionStringBuilder(connectionString) { ConnectTimeout = 3 }.ConnectionString;
+var healthChecks = builder.Services.AddHealthChecks()
+    // SQL Server: легкий SELECT 1, таймаут 5 с; недоступна база → Unhealthy (сервіс без неї не працює)
+    .AddSqlServer(
+        connectionString: healthConnectionString,
+        healthQuery: "SELECT 1;",
+        name: "booking-db",
+        failureStatus: HealthStatus.Unhealthy,
+        tags: ["database", "sql", HealthTags.Ready],
+        timeout: TimeSpan.FromSeconds(5))
+    // власна перевірка (HealthChecks/): схема Лаб. 01 розгорнута — таблиці й процедури на місці
+    .AddCheck<BookingSchemaHealthCheck>("booking-db-schema", HealthStatus.Unhealthy,
+        ["database", HealthTags.Ready, HealthTags.Startup], TimeSpan.FromSeconds(5))
+    // статистика L1-кешу (Лаб. 06) — лише інформативно, без тегу ready
+    .AddCheck<CacheStatisticsHealthCheck>("booking-cache", tags: ["cache"]);
+if (redisConfigured)
+    // Redis — необов'язкова залежність: PING, таймаут 3 с; недоступний → Degraded, а не Unhealthy
+    healthChecks.AddRedis(sp => sp.GetRequiredService<IConnectionMultiplexer>(),
+        name: "redis-cache",
+        failureStatus: HealthStatus.Degraded,
+        tags: ["cache", "redis", HealthTags.Ready],
+        timeout: TimeSpan.FromSeconds(3));
+
+// gRPC Health Checking Protocol (grpc.health.v1.Health): відповідає за тими самими перевірками з тегом ready.
+// Його опитує Aggregator (HealthChecks/GrpcDependencyHealthCheck). Кеш вимкнено — статус обчислюється на запит.
+builder.Services.AddGrpcHealthChecks(o =>
+{
+    o.Services.Map("", check => check.Tags.Contains(HealthTags.Ready));
+    o.UseHealthChecksCache = false;
+});
+
+// --- Лаб. 07: бізнес-метрики (Metrics/, Meter «BookingService.Api») ------------------------------------------------
+builder.Services.AddSingleton<BookingMetrics>();
+builder.Services.AddHostedService<BookingMetricsSnapshotService>();
 
 // --- Лаб. 06: gRPC: окремий порт Kestrel лише з HTTP/2 (appsettings.json, Kestrel:Endpoints:Grpc) ---------
 builder.Services.AddGrpc(options =>
@@ -94,7 +143,8 @@ if (app.Environment.IsDevelopment())
 
 app.MapGet("/", () => Results.Redirect("/swagger")).ExcludeFromDescription();
 app.MapGrpcService<BookingGrpcService>();      // Лаб. 06: gRPC-контракт booking.proto
-app.MapDefaultEndpoints();                      // Лаб. 05: /health, /alive
+app.MapGrpcHealthChecksService();               // Лаб. 07: grpc.health.v1.Health на gRPC-порту
+app.MapDefaultEndpoints();                      // Лаб. 07: /health/live, /health/ready, /health/startup, /health (ServiceDefaults)
 app.MapControllers();
 
 app.Run();

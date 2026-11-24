@@ -2,7 +2,6 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Reviews.Application.Common.Interfaces;
 using Reviews.Domain.Interfaces;
-using Reviews.Infrastructure.Health;
 using Reviews.Infrastructure.Persistence;
 using Reviews.Infrastructure.Persistence.Queries;
 using Reviews.Infrastructure.Persistence.Repositories;
@@ -26,13 +25,14 @@ public static class DependencyInjection
         services.AddScoped<IDiscussionRepository, DiscussionRepository>();
         services.AddScoped<IReviewQueries, ReviewQueries>();
         services.AddScoped<IDiscussionQueries, DiscussionQueries>();
+        services.AddScoped<IStoreReadiness, MongoStoreReadiness>();      // Лаб. 07: готовність індексів для health check
 
         services.AddScoped<IDataSeeder, ReviewSeeder>();
         services.AddScoped<IDataSeeder, DiscussionSeeder>();
         services.AddHostedService<IndexCreationService>();       // спершу індекси (унікальність до вставки даних)
         services.AddHostedService<DataSeedingService>();         // потім сідінг
 
-        services.AddHealthChecks().AddCheck<MongoHealthCheck>("mongodb", tags: ["db", "mongodb"]);
+        // Лаб. 07: health checks MongoDB (AddMongoDb: ping; індекси) реєструє Reviews.WebApi/Program.cs з тегом ready
         return services;
     }
 }

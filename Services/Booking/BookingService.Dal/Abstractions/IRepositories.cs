@@ -36,6 +36,8 @@ public interface IBookingRepository : IGenericRepository<Booking>
     /// <summary>Пошук бронювань клієнта з пагінацією — dbo.usp_Bookings_GetByCustomer.</summary>
     Task<IReadOnlyList<BookingSummary>> GetPageByCustomerAsync(Guid customerId, string? status, int page, int pageSize, CancellationToken ct = default);
     Task<IReadOnlyList<(int Row, int Seat)>> GetOccupiedSeatsAsync(long screeningId, CancellationToken ct = default);
+    /// <summary>Лаб. 07: кількість активних бронювань у кожному статусі (для gauge-метрик). Один легкий GROUP BY.</summary>
+    Task<IReadOnlyDictionary<string, int>> CountByStatusAsync(CancellationToken ct = default);
     Task AddDetailsAsync(BookingDetails details, CancellationToken ct = default);
     Task AddTicketsAsync(IEnumerable<Ticket> tickets, CancellationToken ct = default);
     Task AddStatusHistoryAsync(BookingStatusChange change, CancellationToken ct = default);

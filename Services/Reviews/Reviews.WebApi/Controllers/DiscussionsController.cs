@@ -3,12 +3,13 @@ using Reviews.Application.Common.Models;
 using Reviews.Application.Discussions.Commands;
 using Reviews.Application.Discussions.Queries;
 using Reviews.WebApi.Contracts;
+using Reviews.WebApi.Metrics;
 
 namespace Reviews.WebApi.Controllers;
 
 /// <summary>Теми обговорень фільмів (колекція discussions).</summary>
 [Route("api/discussions")]
-public sealed class DiscussionsController : ApiControllerBase
+public sealed class DiscussionsController(ReviewsMetrics metrics) : ApiControllerBase
 {
     /// <summary>Теми з фільтрами (фільм, статус open/closed, тег), найактивніші зверху.</summary>
     [HttpGet]
@@ -37,7 +38,8 @@ public sealed class DiscussionsController : ApiControllerBase
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<DiscussionDto>> Create(CreateDiscussionCommand command, CancellationToken ct)
     {
-        var discussion = await Sender.Send(command, ct);
+        var discussion = await metrics.MeasureAsync("discussion_create", () => Sender.Send(command, ct));
+        metrics.DiscussionCreated();
         SetETag(discussion.Version);
         return CreatedAtAction(nameof(GetById), new { id = discussion.Id }, discussion);
     }
@@ -51,7 +53,9 @@ public sealed class DiscussionsController : ApiControllerBase
     public async Task<ActionResult<DiscussionDto>> Close(string id, CloseDiscussionRequest request,
         [FromHeader(Name = "If-Match")] string? ifMatch, CancellationToken ct)
     {
-        var discussion = await Sender.Send(MapCommand<CloseDiscussionCommand>(request, id, IfMatchVersion()), ct);
+        var discussion = await metrics.MeasureAsync("discussion_close",
+            () => Sender.Send(MapCommand<CloseDiscussionCommand>(request, id, IfMatchVersion()), ct));
+        metrics.DiscussionClosed();
         SetETag(discussion.Version);
         return Ok(discussion);
     }
@@ -63,7 +67,8 @@ public sealed class DiscussionsController : ApiControllerBase
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
     public async Task<ActionResult<DiscussionDto>> Reopen(string id, [FromHeader(Name = "If-Match")] string? ifMatch, CancellationToken ct)
     {
-        var discussion = await Sender.Send(new ReopenDiscussionCommand(id, IfMatchVersion()), ct);
+        var discussion = await metrics.MeasureAsync("discussion_reopen",
+            () => Sender.Send(new ReopenDiscussionCommand(id, IfMatchVersion()), ct));
         SetETag(discussion.Version);
         return Ok(discussion);
     }

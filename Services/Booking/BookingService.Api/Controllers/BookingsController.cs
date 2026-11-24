@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using BookingService.Api.Metrics;
 using BookingService.Bll.Dtos;
 using BookingService.Bll.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -13,7 +14,9 @@ namespace BookingService.Api.Controllers;
 [ApiController]
 [Route("api/bookings")]
 [Produces("application/json")]
-public sealed class BookingsController(IBookingService bookings, ILogger<BookingsController> logger) : ControllerBase
+// Лаб. 07: кожна бізнес-операція проходить через BookingMetrics.MeasureAsync (тривалість і для невдалих
+// виконань), а після успіху збільшує свій лічильник (bookings.created, bookings.paid…).
+public sealed class BookingsController(IBookingService bookings, BookingMetrics metrics, ILogger<BookingsController> logger) : ControllerBase
 {
     /// <summary>Бронювання з квитками та історією статусів.</summary>
     [HttpGet("{id:long}")]
@@ -32,7 +35,8 @@ public sealed class BookingsController(IBookingService bookings, ILogger<Booking
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
     public async Task<ActionResult<BookingDto>> Create(CreateBookingDto input, CancellationToken ct)
     {
-        var created = await bookings.CreateAsync(input, ct);
+        var created = await metrics.MeasureAsync("create", () => bookings.CreateAsync(input, ct));
+        metrics.BookingCreated(created.Status, created.Channel);
         Activity.Current?.SetTag("booking.id", created.Id);           // бізнес-атрибути на span HTTP-запиту
         Activity.Current?.SetTag("booking.status", created.Status);
         logger.LogInformation("API: бронювання {BookingId} створено через канал {Channel}, статус {Status}",
@@ -48,7 +52,8 @@ public sealed class BookingsController(IBookingService bookings, ILogger<Booking
     public async Task<IActionResult> Confirm(long id,
         [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] BookingActionDto? action, CancellationToken ct)
     {
-        await bookings.ConfirmAsync(id, action, ct);
+        await metrics.MeasureAsync("confirm", () => bookings.ConfirmAsync(id, action, ct));
+        metrics.BookingConfirmed();
         Activity.Current?.SetTag("booking.id", id);
         logger.LogInformation("API: бронювання {BookingId} підтверджено", id);
         return NoContent();
@@ -67,7 +72,8 @@ public sealed class BookingsController(IBookingService bookings, ILogger<Booking
     public async Task<ActionResult<PaymentDto>> Pay(long id, PayBookingDto input,
         [FromHeader(Name = "Idempotency-Key")] string? idempotencyKey, CancellationToken ct)
     {
-        var result = await bookings.PayAsync(id, input, idempotencyKey, ct);
+        var result = await metrics.MeasureAsync("pay", () => bookings.PayAsync(id, input, idempotencyKey, ct));
+        if (!result.Replayed) metrics.BookingPaid(input.Provider);     // повтор з тим самим ключем — не нова оплата
         Activity.Current?.SetTag("booking.id", id);
         Activity.Current?.SetTag("payment.replayed", result.Replayed);
         logger.LogInformation("API: оплата {PaymentId} бронювання {BookingId}, повторний запит: {Replayed}",
@@ -85,7 +91,8 @@ public sealed class BookingsController(IBookingService bookings, ILogger<Booking
     public async Task<IActionResult> Issue(long id,
         [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] BookingActionDto? action, CancellationToken ct)
     {
-        await bookings.IssueAsync(id, action, ct);
+        await metrics.MeasureAsync("issue", () => bookings.IssueAsync(id, action, ct));
+        metrics.BookingIssued();
         return NoContent();
     }
 
@@ -97,7 +104,8 @@ public sealed class BookingsController(IBookingService bookings, ILogger<Booking
     public async Task<IActionResult> Cancel(long id,
         [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] BookingActionDto? action, CancellationToken ct)
     {
-        await bookings.CancelAsync(id, action, ct);
+        await metrics.MeasureAsync("cancel", () => bookings.CancelAsync(id, action, ct));
+        metrics.BookingCancelled();
         Activity.Current?.SetTag("booking.id", id);
         logger.LogInformation("API: бронювання {BookingId} скасовано", id);
         return NoContent();
@@ -117,7 +125,7 @@ public sealed class BookingsController(IBookingService bookings, ILogger<Booking
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> Delete(long id, CancellationToken ct)
     {
-        await bookings.DeleteAsync(id, ct);
+        await metrics.MeasureAsync("delete", () => bookings.DeleteAsync(id, ct));
         return NoContent();
     }
 }

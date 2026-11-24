@@ -4,12 +4,15 @@ using Reviews.Application.Common.Models;
 using Reviews.Application.Reviews.Commands;
 using Reviews.Application.Reviews.Queries;
 using Reviews.WebApi.Contracts;
+using Reviews.WebApi.Metrics;
 
 namespace Reviews.WebApi.Controllers;
 
 /// <summary>Відгуки глядачів (колекція reviews) з вкладеними коментарями.</summary>
 [Route("api/reviews")]
-public sealed class ReviewsController(ILogger<ReviewsController> logger) : ApiControllerBase
+// Лаб. 07: команди вимірюються ReviewsMetrics.MeasureAsync (і невдалі теж) і після успіху
+// збільшують лічильник (reviews.created з тегом review.rating, reviews.updated…).
+public sealed class ReviewsController(ReviewsMetrics metrics, ILogger<ReviewsController> logger) : ApiControllerBase
 {
     /// <summary>
     /// Список відгуків: фільтри (фільм, автор, оцінка, перевірений глядач), повнотекстовий пошук search,
@@ -51,7 +54,8 @@ public sealed class ReviewsController(ILogger<ReviewsController> logger) : ApiCo
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
     public async Task<ActionResult<ReviewDetailsDto>> Create(CreateReviewCommand command, CancellationToken ct)
     {
-        var review = await Sender.Send(command, ct);
+        var review = await metrics.MeasureAsync("review_create", () => Sender.Send(command, ct));
+        metrics.ReviewCreated(review.Rating);
         SetETag(review.Version);
         Activity.Current?.SetTag("review.id", review.Id);
         Activity.Current?.SetTag("movie.id", review.MovieId);
@@ -68,7 +72,9 @@ public sealed class ReviewsController(ILogger<ReviewsController> logger) : ApiCo
     public async Task<ActionResult<ReviewDetailsDto>> Update(string id, UpdateReviewRequest request,
         [FromHeader(Name = "If-Match")] string? ifMatch, CancellationToken ct)
     {
-        var review = await Sender.Send(MapCommand<UpdateReviewCommand>(request, id, IfMatchVersion()), ct);
+        var review = await metrics.MeasureAsync("review_update",
+            () => Sender.Send(MapCommand<UpdateReviewCommand>(request, id, IfMatchVersion()), ct));
+        metrics.ReviewUpdated();
         SetETag(review.Version);
         Activity.Current?.SetTag("review.id", review.Id);
         logger.LogInformation("API: відгук {ReviewId} оновлено до версії {Version}", review.Id, review.Version);
@@ -83,7 +89,8 @@ public sealed class ReviewsController(ILogger<ReviewsController> logger) : ApiCo
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> Delete(string id, [FromHeader(Name = "If-Match")] string? ifMatch, CancellationToken ct)
     {
-        await Sender.Send(new DeleteReviewCommand(id, IfMatchVersion()), ct);
+        await metrics.MeasureAsync("review_delete", () => Sender.Send(new DeleteReviewCommand(id, IfMatchVersion()), ct));
+        metrics.ReviewDeleted();
         Activity.Current?.SetTag("review.id", id);
         logger.LogInformation("API: відгук {ReviewId} видалено", id);
         return NoContent();
@@ -96,7 +103,8 @@ public sealed class ReviewsController(ILogger<ReviewsController> logger) : ApiCo
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<CommentDto>> AddComment(string id, AddCommentRequest request, CancellationToken ct)
     {
-        var comment = await Sender.Send(MapCommand<AddCommentCommand>(request, id), ct);
+        var comment = await metrics.MeasureAsync("comment_add", () => Sender.Send(MapCommand<AddCommentCommand>(request, id), ct));
+        metrics.CommentAdded();
         return CreatedAtAction(nameof(GetById), new { id }, comment);
     }
 
@@ -107,7 +115,7 @@ public sealed class ReviewsController(ILogger<ReviewsController> logger) : ApiCo
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> RemoveComment(string id, string commentId, CancellationToken ct)
     {
-        await Sender.Send(new RemoveCommentCommand(id, commentId), ct);
+        await metrics.MeasureAsync("comment_remove", () => Sender.Send(new RemoveCommentCommand(id, commentId), ct));
         return NoContent();
     }
 }
