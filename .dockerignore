@@ -1,0 +1,7 @@
+**/bin/
+**/obj/
+**/logs/
+**/TestResults/
+.git/
+docs/
+**/*.user

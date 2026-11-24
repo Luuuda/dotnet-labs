@@ -1,0 +1,70 @@
+{
+  "live": {
+    "status": 200,
+    "body": {
+      "status": "Healthy",
+      "totalMs": 0.1,
+      "checks": [
+        {
+          "name": "self",
+          "status": "Healthy",
+          "description": "Процес відповідає",
+          "tags": [
+            "live"
+          ],
+          "ms": 0,
+          "error": null,
+          "data": null
+        }
+      ]
+    }
+  },
+  "ready": {
+    "status": 503,
+    "body": {
+      "status": "Unhealthy",
+      "totalMs": 3078.3,
+      "checks": [
+        {
+          "name": "booking-db",
+          "status": "Unhealthy",
+          "description": null,
+          "tags": [
+            "database",
+            "sql",
+            "ready"
+          ],
+          "ms": 3073.7,
+          "error": "При установлении соединения с SQL Server произошла ошибка, связанная с сетью или с определенным экземпляром. Сервер не найден или недоступен. Убедитесь, что имя экземпляра указано правильно и что на SQL Server разрешены удаленные соединения. (provider: Поставщик TCP, error: 0 - Время ожидания операции истекло.)",
+          "data": null
+        },
+        {
+          "name": "booking-db-schema",
+          "status": "Unhealthy",
+          "description": "SQL Server недоступний для перевірки схеми",
+          "tags": [
+            "database",
+            "ready",
+            "startup"
+          ],
+          "ms": 3075,
+          "error": "Истекло время ожидания. Время ожидания истекло раньше, чем удалось получить подключение из пула. Возможно, все подключения в пуле уже используются и достигнут максимальный размер пула.",
+          "data": null
+        },
+        {
+          "name": "redis-cache",
+          "status": "Healthy",
+          "description": null,
+          "tags": [
+            "cache",
+            "redis",
+            "ready"
+          ],
+          "ms": 4.9,
+          "error": null,
+          "data": null
+        }
+      ]
+    }
+  }
+}

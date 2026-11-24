@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- DAL: інтерфейси репозиторіїв (включно з Generic Repository), реалізації ADO.NET і Dapper, Unit of Work. -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.8" />
+    <PackageReference Include="Dapper" Version="2.1.66" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.21" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.21" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\BookingService.Domain\BookingService.Domain.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Скрипти бази з Лаб. 01 (db/p1): застосовуються до порожньої бази в контейнері Aspire -->
+    <EmbeddedResource Include="..\..\..\db\p1\schema.sql" LogicalName="Scripts.01_schema.sql" />
+    <EmbeddedResource Include="..\..\..\db\p1\procedures.sql" LogicalName="Scripts.02_procedures.sql" />
+    <EmbeddedResource Include="..\..\..\db\p1\seed.sql" LogicalName="Scripts.03_seed.sql" />
+  </ItemGroup>
+</Project>

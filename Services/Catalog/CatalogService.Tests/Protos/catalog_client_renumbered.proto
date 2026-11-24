@@ -1,0 +1,14 @@
+// ТЕСТОВИЙ контракт (Лаб. 06, перевірка «змініть номер поля лише на сервері»): копія MovieReply з catalog.proto,
+// у якій поле title має номер 20 замість 2. Тест CatalogProtoCompatibilityTests показує, що такий «клієнт»
+// перестає читати назву фільму, хоча ім'я поля те саме: у бінарному форматі protobuf є лише номери полів.
+syntax = "proto3";
+
+option csharp_namespace = "CatalogService.Tests.ProtoRenumbered";
+
+package cinema.catalog.tests;
+
+message MovieReply {
+  int32 id = 1;
+  string title = 20;            // було 2
+  int32 release_year = 4;
+}

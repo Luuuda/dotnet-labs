@@ -1,0 +1,62 @@
+@api = http://localhost:5380
+
+### Відгуки на «Дюну», найвищі оцінки спочатку, сторінка 1 по 2
+GET {{api}}/api/reviews?movieId=3&sortBy=rating&page=1&pageSize=2
+
+### Повнотекстовий пошук (текстовий індекс tx_text)
+GET {{api}}/api/reviews?search=IMAX
+
+### Курсорна стрічка (after = nextCursor з попередньої відповіді)
+GET {{api}}/api/reviews/feed?limit=3
+
+### Створити відгук → 201 + Location з рядковим ObjectId
+POST {{api}}/api/reviews
+Content-Type: application/json
+
+{
+  "movieId": 2, "movieTitle": "Оппенгеймер",
+  "userId": "6f1c2a10-0000-4000-8000-000000000003", "displayName": "Марія Бондар",
+  "rating": 5, "text": "Сильна акторська гра і звук.", "aspects": { "acting": 5, "sound": 5 }, "verifiedViewer": true
+}
+
+### Rating = 10 → 400 ДО виклику обробника (див. лог: «відхилено валідацією ДО виклику обробника»)
+POST {{api}}/api/reviews
+Content-Type: application/json
+
+{ "movieId": 2, "movieTitle": "Оппенгеймер", "userId": "u-100", "displayName": "Тест", "rating": 10, "text": "Супер" }
+
+### Повторний відгук того самого користувача → 400 (асинхронне правило валідатора)
+POST {{api}}/api/reviews
+Content-Type: application/json
+
+{
+  "movieId": 2, "movieTitle": "Оппенгеймер",
+  "userId": "6f1c2a10-0000-4000-8000-000000000003", "displayName": "Марія Бондар",
+  "rating": 4, "text": "Ще раз"
+}
+
+### Відгук за Id (ETag = версія документа). Підставте id з відповіді на POST
+@id = 000000000000000000000000
+GET {{api}}/api/reviews/{{id}}
+
+### Оновлення з If-Match: актуальна версія → 200, застаріла → 409
+PUT {{api}}/api/reviews/{{id}}
+Content-Type: application/json
+If-Match: "0"
+
+{ "rating": 4, "text": "Після другого перегляду — 4 з 5" }
+
+### Коментар (вкладений документ)
+POST {{api}}/api/reviews/{{id}}/comments
+Content-Type: application/json
+
+{ "userId": "u-5", "displayName": "Ірина", "text": "Повністю згодна!" }
+
+### Рейтинг фільму (aggregation pipeline)
+GET {{api}}/api/movies/3/rating
+
+### Теми обговорень
+GET {{api}}/api/discussions?status=open
+
+### Health check MongoDB
+GET {{api}}/health
