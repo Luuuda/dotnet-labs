@@ -1,5 +1,5 @@
 // Оркестрація платформи «Кінотеатр» (.NET Aspire). Тут лише опис ресурсів і зв'язків між ними — без бізнес-логіки.
-// Порядок запуску задається WaitFor: бази → мікросервіси → Aggregator → Gateway.
+// Порядок запуску задається WaitFor: бази й брокер → мікросервіси → Aggregator → Gateway.
 // Лаб. 07: кожен сервіс має WithHttpHealthCheck("/health") — Dashboard показує його стан (Healthy / Degraded /
 // Unhealthy), а WaitFor чекає, поки залежність стане ЗДОРОВОЮ (усі її перевірки пройшли), а не лише запуститься.
 
@@ -28,6 +28,20 @@ var redis = builder.AddRedis("redis")
                    .WithDataVolume("cinema-platform-redis-data")
                    .WithLifetime(ContainerLifetime.Persistent);
 
+// ---------- Лаб. 08: RabbitMQ — брокер повідомлень для подієвої взаємодії сервісів ----------
+// Каталог публікує інтеграційні події в exchange catalog-events, Бронювання і Відгуки споживають їх зі своїх черг
+// (топологію оголошують самі сервіси під час старту — Platform.Messaging/EventTopology).
+// WithDataVolume: durable exchange / черги і persistent-повідомлення переживають перезапуск брокера.
+// WithManagementPlugin: Management UI на http://localhost:15672 (exchanges, queues, bindings, DLQ, повідомлення).
+// Користувач і пароль — параметри Aspire (згенерований messaging-password зберігається
+// в user secrets AppHost, тож після перезапуску збігається з паролем, записаним у томі).
+// Рядок підключення сервіси отримують як ConnectionStrings:messaging (WithReference) і читають через
+// builder.AddRabbitMQClient("messaging").
+var messaging = builder.AddRabbitMQ("messaging")
+                       .WithDataVolume("cinema-platform-rabbitmq-data")
+                       .WithManagementPlugin(port: 15672)
+                       .WithLifetime(ContainerLifetime.Persistent);
+
 // ---------- Мікросервіси (логічні імена = адреси для service discovery) ----------
 // Лаб. 06: кожен сервіс слухає два порти Kestrel (appsettings.json сервісу): REST (HTTP/1.1) для Gateway
 // і "grpc" — лише HTTP/2 без TLS для Aggregator. Ендпоінти без проксі Aspire, щоб порт у Dashboard
@@ -37,6 +51,7 @@ var booking = builder.AddProject<Projects.BookingService_Api>("booking-api")
     .WithHttpEndpoint(port: 5181, name: "grpc", isProxied: false)
     .WithReference(bookingDb).WaitFor(bookingDb)
     .WithReference(redis).WaitFor(redis)
+    .WithReference(messaging).WaitFor(messaging)                      // Лаб. 08: споживач подій Каталогу (booking.catalog-sync)
     .WithEnvironment("Database__ApplyScriptsOnStartup", "true")       // порожня база → скрипти db/p1
     .WithHttpHealthCheck("/health");                                  // Лаб. 07: SQL Server, схема, Redis (Degraded)
 
@@ -45,6 +60,7 @@ var catalog = builder.AddProject<Projects.CatalogService_Api>("catalog-api")
     .WithHttpEndpoint(port: 5281, name: "grpc", isProxied: false)
     .WithReference(catalogDb).WaitFor(catalogDb)
     .WithReference(redis).WaitFor(redis)                              // дворівневий кеш каталогу (L2)
+    .WithReference(messaging).WaitFor(messaging)                      // Лаб. 08: публікує події в catalog-events
     .WithEnvironment("Database__SeedOnStartup", "true")               // міграції EF Core і сідінг на старті
     .WithHttpHealthCheck("/health");                                  // Лаб. 07: SQL Server, міграції, Redis (Degraded)
 
@@ -53,6 +69,7 @@ var reviews = builder.AddProject<Projects.Reviews_WebApi>("reviews-api")
     .WithHttpEndpoint(port: 5381, name: "grpc", isProxied: false)
     .WithReference(reviewsDb).WaitFor(reviewsDb)
     .WithReference(redis).WaitFor(redis)                              // індекси й сідінг на старті
+    .WithReference(messaging).WaitFor(messaging)                      // Лаб. 08: споживач подій Каталогу (reviews.catalog-sync)
     .WithHttpHealthCheck("/health");                                  // Лаб. 07: MongoDB, індекси, Redis (Degraded)
 
 // ---------- Aggregator: паралельно опитує три сервіси ----------

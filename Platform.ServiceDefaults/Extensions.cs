@@ -168,12 +168,16 @@ public static class Extensions
                 .AddMeter(CacheMeters)                       // Лаб. 06: метрики попадань / промахів кешу
                 .AddMeter(BusinessMeters)                    // Лаб. 07: бізнес-метрики сервісів (<Сервіс>.Api/Metrics)
                 .AddMeter(PollyMeter)                        // Лаб. 07: події resilience (retry, circuit breaker, timeout)
-                .AddMeter(GrpcMeters))
+                .AddMeter(GrpcMeters)
+                .AddMeter("Platform.Messaging"))             // Лаб. 08: опубліковані / оброблені події, час обробки
             .WithTracing(tracing => tracing
                 .SetSampler(new ParentBasedSampler(new TraceIdRatioBasedSampler(samplingRatio)))
                 .AddSource(builder.Environment.ApplicationName)
                 .AddSource(BusinessActivitySources)
                 .AddSource(MongoActivitySource)
+                // Лаб. 08: span-и публікації (Producer) і обробки (Consumer) повідомлень RabbitMQ — Platform.Messaging,
+                // зв'язані через W3C traceparent у заголовках: HTTP → Publish → Consume → DB в одному trace
+                .AddSource("Platform.Messaging")
                 .AddAspNetCoreInstrumentation(options =>
                 {
                     options.RecordException = true;

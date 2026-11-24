@@ -4,6 +4,7 @@
     <Project Path="Platform.ServiceDefaults/Platform.ServiceDefaults.csproj" />
     <Project Path="Platform.ApiGateway/Platform.ApiGateway.csproj" />
     <Project Path="Platform.Aggregator/Platform.Aggregator.csproj" />
+    <Project Path="Platform.Messaging/Platform.Messaging.csproj" />
   </Folder>
   <Folder Name="/Services/" />
   <Folder Name="/Services/Booking/">
