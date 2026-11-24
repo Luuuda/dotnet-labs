@@ -1,8 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
   <!-- Aggregator Pattern: типізовані gRPC-клієнти до мікросервісів (Лаб. 06; HTTP-клієнти Лаб. 05 — для порівняння),
-       service discovery, паралельні виклики Task.WhenAll, часткові відмови → доступні дані + попередження, кеш у Redis. -->
+       service discovery, паралельні виклики Task.WhenAll, часткові відмови → доступні дані + попередження, кеш у Redis.
+       Лаб. 07: політики стійкості для кожного клієнта (Resilience/), бізнес-метрики (Metrics/), health checks (HealthChecks/). -->
   <PropertyGroup>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- RemoveAllResilienceHandlers() у Microsoft.Extensions.Http.Resilience 9.x позначений як [Experimental]
+         (EXTEXP0001); саме його рекомендує документація, щоб замінити обробник ServiceDefaults без нашарування. -->
+    <NoWarn>$(NoWarn);EXTEXP0001</NoWarn>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Swashbuckle.AspNetCore" Version="8.1.*" />
@@ -11,6 +15,9 @@
     <PackageReference Include="Google.Protobuf" Version="3.31.1" />
     <PackageReference Include="Grpc.Tools" Version="2.72.0" PrivateAssets="all" />
     <PackageReference Include="Aspire.StackExchange.Redis.DistributedCaching" Version="9.4.2" />
+    <!-- Лаб. 07: клієнт gRPC Health Checking Protocol (Health.HealthClient) і health check Redis (Degraded) -->
+    <PackageReference Include="Grpc.HealthCheck" Version="2.71.0" />
+    <PackageReference Include="AspNetCore.HealthChecks.Redis" Version="9.0.0" />
   </ItemGroup>
   <ItemGroup>
     <!-- Ті самі контракти, що й у сервісах: сервер генерує GrpcServices="Server", тут — лише клієнтська частина -->
